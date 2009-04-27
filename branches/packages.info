@@ -1,0 +1,68 @@
+#simple file to be sourced to get info about packages to install
+
+# the config is based on the idea of package sets
+
+#SET1_NAME is the name displayed in the package installer
+#SET1_NAME is the description
+#SET1_LIST is the list of packages required for the package group
+#SET1_COMP is the package channel
+
+#minimum list of packages for Yoper => slim cd
+##BASEPKGS="Linux-PAM MAKEDEV aalib acpid dash bash beecrypt bzip2 chkconfig color compat-libstdc.so.5 console-tools coreutils cpio cracklib curl cyrus-sasl db4 device-mapper dhcp-client dialog diffutils disktype e2fsprogs eject elfutils ethtool file findutils fuse gawk glibc gmp grep groff grub gzip hdparm hwdata hwsetup infozip iproute iptables kbd kudzu less lilo logrotate lua lzo man mc module-init-tools nano ncurses net-tools newt ntfs-3g ntfsprogs openssh openssl parted patch pciutils pcre powernowd prelink procinfo procps progsreiserfs psmisc pth python python-xml readahead readline rebuildfstab resmgr rpm rpm-python sed shadow sharutils smartpm sqlite sudo sysfsutils sysvinit tar texinfo udev unzip usbutils usermode utempter util-linux-ng wget wireless-tools words xfsprogs yaird yoper-rpm-settings yoperbase yoperinitscripts yopermaintain zlib sshfs-fuse pcmcia-utils wpa_supplicant yoper-kde-settings fcron reiserfsprogs ntp-date reiser4progs mirrorwatch rp-pppoe oss-gpl pam_userlist tz-select"
+#BASEPKGS="bash beecrypt bzip2 chkconfig color console-tools coreutils cpio cracklib curl cyrus-sasl dash db4 device-mapper dhcp-client dialog disktype e2fsprogs eject elfutils ethtool fcron file findutils gawk glibc gmp grep groff grub gzip hdparm hwdata iproute kbd kudzu less lilo Linux-PAM logrotate MAKEDEV man mc mirrorwatch mkinitrd module-init-tools nano ncurses net-tools newt openssh openssl patch pciutils pcmcia-utils pcre procinfo procps progsreiserfs psmisc pth python python-xml readline rebuildfstab reiser4progs reiserfsprogs rpm rpm-python sed shadow sharutils smartpm sqlite sudo sysfsutils sysvinit tar texinfo tz-select udev usbutils usermode utempter util-linux-ng wget words xfsprogs yoperbase yoperinitscripts yopermaintain yoper-rpm-settings zlib"
+BASEPKGS="bash beecrypt bzip2 chkconfig color console-tools coreutils cpio cracklib curl cyrus-sasl dash db4 device-mapper dhcp-client dialog disktype e2fsprogs eject elfutils ethtool fcron file findutils gawk glibc gmp grep groff grub gzip hdparm hwdata iproute kbd kudzu less lilo Linux-PAM logrotate MAKEDEV man mc mirrorwatch mkinitrd module-init-tools nano ncurses net-tools newt openssh openssl pam_userlist patch pciutils pcmcia-utils pcre procinfo procps progsreiserfs psmisc pth python python-xml readline rebuildfstab reiser4progs reiserfsprogs rpm rpm-python sed shadow sharutils smartpm sudo sysfsutils sysvinit tar texinfo tz-select udev usbutils usermode utempter util-linux-ng wget words xfsprogs yoperbase yoperinitscripts yopermaintain yoper-rpm-settings zlib "
+
+SET01_NAME="Fluxbox Desktop"
+SET01_DESC="Simple X Desktop"
+SET01_LIST="Mesa-libGL libglx fluxbox-desktop"
+SET01_COMP="rocketfuel"
+
+SET02_NAME="Xfce4 Desktop"
+SET02_DESC="GTK2 Based Desktop"
+SET02_LIST="Mesa-libGL libglx xfce4-desktop-standard"
+SET02_COMP="rocketfuel"
+
+SET03_NAME="Minimal KDE3"
+SET03_DESC="Most basic KDE3 Desktop"
+SET03_LIST="Mesa-libGL libglx kdebase"
+SET03_COMP="rocketfuel"
+
+SET04_NAME="Default KDE3"
+SET04_DESC="The Standard Yoper Desktop"
+SET04_LIST="Mesa-libGL libglx yoper-kde-theme kde-desktop-basic kdeadmin kdeartwork kdebluetooth kdegraphics kdemultimedia kdenetwork kdeutils amarok gwenview kvirc digikam smplayer k3b koffice qtparted klamav kpowersave "
+SET04_COMP="rocketfuel"
+
+SET05_NAME="Common Non KDE Applications"
+SET05_DESC="Common Non KDE Apps"
+SET05_LIST="firefox gimp amsn vlc inkscape java firefox-plugin-java firefox-plugin-mplayer gtkpod gtk-qt-engine"
+SET05_COMP="rocketfuel"
+
+SET06_NAME="Compiz Desktop Effects"
+SET06_DESC="Flash Desktop Effects "
+SET06_LIST="compiz-desktop"
+SET06_COMP="rocketfuel"
+
+SET07_NAME="KDE4 Desktop Preview"
+SET07_DESC="Common KDE4 Packages"
+SET07_LIST="Mesa-libGL libglx xorg-x11-base kde4libs kde4pimlibs kde4base amarok2 smplayer"
+SET07_COMP="dynamite"
+
+SET08_NAME="Yoper Development Tools"
+SET08_DESC="Scripts and Tools for Yoper Development"
+SET08_LIST="subversion rrebuild mach"
+SET08_COMP="rocketfuel"
+
+SET09_NAME="Yoper Live CD"
+SET09_DESC="Standard Yoper Desktop Installation"
+SET09_LIST="Mesa-libGL libglx yoper-kde-theme kde-desktop-basic kdeadmin kdeartwork kdebluetooth kdegraphics kdemultimedia kdenetwork kdeutils gwenview digikam k3b qtparted firefox java firefox-plugin-java firefox-plugin-mplayer gtk-qt-engine fluxbox-desktop vim smplayer konversation"
+SET09_COMP="rocketfuel dynamite"
+
+SET10_NAME="Yoper KDE4 Preview"
+SET10_DESC="Preview to the yet unstable KDE4 Desktop"
+SET10_LIST="Mesa-libGL libglx amsn firefox amsn vlc java firefox-plugin-java firefox-plugin-mplayer vim fluxbox-desktop kde4libs kde4pimlibs kde4base kde4base-runtime kde4base-workspace kde4accessibility kde4admin kde4artwork  kde4edu kde4edu-kstars kde4edu-libs kde4edu-math kde4games kde4graphics kde4multimedia kde4network kde4plasma-addons kde4toys kde4utils firefox java firefox-plugin-java fluxbox-desktop vim smplayer "
+SET10_COMP="rocketfuel dynamite"
+
+SET11_NAME="Yoper E17"
+SET11_DESC="Lightweight Desktop"
+SET11_LIST="Mesa-libGL libglx vim xorg-x11-base e17 arora abiword epdfview Thunar xfburn vlc "
+SET11_COMP="rocketfuel dynamite"

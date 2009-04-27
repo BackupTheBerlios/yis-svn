@@ -1,0 +1,6 @@
+#!/bin/sh
+
+source /etc/yis/settings
+
+$TOP_DIR/common/add-network-interfaces.sh
+

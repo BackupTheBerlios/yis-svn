@@ -1,0 +1,8 @@
+#!/bin/bash
+
+[ -f /etc/yis/settings ] && . /etc/yis/settings
+
+echo "Reloading software channels ..."
+
+$TOP_DIR/common/reset-smart-channels.sh
+

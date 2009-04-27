@@ -1,0 +1,10 @@
+#!/bin/sh
+
+(
+
+[ -x /usr/sbin/soundcarddetection ] && /usr/sbin/soundcarddetection -v
+[ -x /etc/init.d/oss ] && ( /etc/init.d/oss start ; chkconfig --add oss >/dev/null 2>&1 )
+
+) &
+
+

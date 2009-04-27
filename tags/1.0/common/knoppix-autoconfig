@@ -1,0 +1,1697 @@
+#!/bin/bash
+# /KNOPPIX/etc/init.d/knoppix-autoconfig
+# Basic system configuration and hardware setup
+# (C) Klaus Knopper <knopper@knopper.net> 2004
+# modified for KANOTIX by Joerg Schirottke <master@kanotix.com> 2003-05
+# modified for Yoper by Tobias Gerschner <tobias@lists.yoper.com>
+
+PATH="/bin:/sbin:/usr/bin:/usr/sbin:/usr/X11R6/bin"
+export PATH
+
+umask 022
+
+# override tool behaviour through distro-defaults
+
+case "$1" in
+	start)
+
+# Ignore these signals: INT, TERM, SEGV
+trap "" 2 3 11
+
+# ANSI COLORS
+CRE="
+[K"
+NORMAL="[0;39m"
+# RED: Failure or error message
+RED="[1;31m"
+# GREEN: Success message
+GREEN="[1;32m"
+# YELLOW: Descriptions
+YELLOW="[1;33m"
+# BLUE: System messages
+BLUE="[1;34m"
+# MAGENTA: Found devices or drivers
+MAGENTA="[1;35m"
+# CYAN: Questions
+CYAN="[1;36m"
+# BOLD WHITE: Hint
+WHITE="[1;37m"
+
+### Utility Function(s)
+
+# Simple shell grep
+stringinfile(){
+	case "$(cat $2)" in *$1*) return 0;; esac
+	return 1
+}
+
+# same for strings
+stringinstring(){
+	case "$2" in *$1*) return 0;; esac
+	return 1
+}
+
+# Reread boot command line; echo last parameter's argument or return false.
+getbootparam(){
+	stringinstring " $1=" "$CMDLINE" || return 1
+	result="${CMDLINE##*$1=}"
+	result="${result%%[ 	]*}"
+	echo "$result"
+	return 0
+}
+
+# Check boot commandline for specified option
+checkbootparam(){
+	stringinstring " $1" "$CMDLINE"
+	return "$?"
+}
+
+### EOF utility functions
+
+# We need /proc here, so mount it in case we skipped the bootfloppy
+[ -f /proc/version ] || mount -t proc proc /proc 2>/dev/null
+
+# Kernel 2.6
+[ -d /sys/devices ] || mount -t sysfs sysfs /sys 2>/dev/null
+
+# Read in boot parameters
+# This should work, but doesn't with Kernel 2.4.19-rc1
+# CMDLINE="$(</proc/cmdline)" This should work, but doesn't with Kernel 2.4.19-rc1
+# This works.
+[ -z "$CMDLINE" ] && CMDLINE="$(cat /proc/cmdline)"
+
+# Check if we are in interactive startup mode
+INTERACTIVE=""
+stringinstring "BOOT_IMAGE=expert " "$CMDLINE" && INTERACTIVE="yes"
+
+# Check if we want the config floppy
+MYCONF=""
+case "$CMDLINE" in *\ myconf*|*\ floppyconf*|*\ custom*|*\ config*) MYCONF="yes"; ;; esac
+if [ -n "$MYCONF" ]; then
+	# Check for given config directory
+	MYCONFDIR="$(getbootparam 'myconfig')"
+	[ -n "$MYCONFDIR" ] || MYCONFDIR="$(getbootparam 'myconf')"
+	[ -n "$MYCONFDIR" ] || MYCONFDIR="$(getbootparam 'floppyconfig')"
+	[ -n "$MYCONFDIR" ] || MYCONFDIR="$(getbootparam 'floppyconf')"
+	[ -n "$MYCONFDIR" ] || MYCONFDIR="$(getbootparam 'custom')"
+	[ -n "$MYCONFDIR" ] || MYCONFDIR="$(getbootparam 'config')"
+fi
+
+### localization
+# Allow language specification via commandline. The default language
+# will be overridden via "lang=de" boot commandline
+LANGUAGE="$(getbootparam lang 2>/dev/null)"
+[ -n "$LANGUAGE" ] || LANGUAGE="de"
+
+# Set default console font (needed for first console + kernel 2.6)
+CONSOLEFONT="lat0-16"
+
+# The default language/keyboard to use. This CANNOT be autoprobed.
+# Most of these variables will be used to generate the KDE defaults
+# and will be inserted into /etc/sysconfig/* below.
+case "$LANGUAGE" in
+	de)
+		# German version
+		COUNTRY="de"
+		LANG="de_DE@euro"
+		KEYTABLE="de-latin1-nodeadkeys"
+		XKEYBOARD="de"
+		KDEKEYBOARD="de"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr"
+		TZ="Europe/Berlin"
+		;;
+	de-utf8)
+		# German version UTF-8
+		LANGUAGE="de_DE:de"
+		COUNTRY="de_DE"
+		LANG="de_DE.UTF-8"
+		KEYTABLE="de-latin1-nodeadkeys"
+		XKEYBOARD="de"
+		KDEKEYBOARD="de"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr"
+		TZ="Europe/Berlin"
+		;;
+	au)
+		# Australian version
+		LANGUAGE="en"
+		COUNTRY="au"
+		LANG="en_AU"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr"
+		TZ="Australia/Sydney"
+		;;
+	au-utf8)
+		# Australian version
+		LANGUAGE="en_AU:en"
+		COUNTRY="au"
+		LANG="en_AU.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr"
+		TZ="Australia/Sydney"
+		;;
+	be)
+		# Belgian version
+		LANGUAGE="be"
+		COUNTRY="be"
+		LANG="C"
+		KEYTABLE="be2-latin1"
+		XKEYBOARD="be"
+		KDEKEYBOARD="be"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Brussels"
+		;;
+	be-utf8)
+		# Belgian version
+		LANGUAGE="be_BY:be"
+		COUNTRY="be"
+		LANG="be_BY.UTF-8"
+		KEYTABLE="be2-latin1"
+		XKEYBOARD="be"
+		KDEKEYBOARD="be"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Brussels"
+		;;
+	bg)
+		# Bulgarian version
+		LANGUAGE="bg"
+		COUNTRY="bg"
+		LANG="bg_BG"
+		KEYTABLE="bg"
+		XKEYBOARD="bg"
+		KDEKEYBOARD="bg"
+		CHARSET="microsoft-cp1251"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Sofia"
+		;;
+	bg-utf8)
+		# Bulgarian version
+		LANGUAGE="bg_BG:bg"
+		COUNTRY="bg"
+		LANG="bg_BG.UTF-8"
+		KEYTABLE="bg"
+		XKEYBOARD="bg"
+		KDEKEYBOARD="bg"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Sofia"
+		;;
+	br)
+		# Brazilian Version
+		LANGUAGE="pt_BR"
+		COUNTRY="br"
+		LANG="pt_BR"
+		KEYTABLE="br-abnt2"
+		XKEYBOARD="abnt2"
+		KDEKEYBOARD="br"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,br"
+		TZ="America/Sao_Paulo"
+		;;
+	br-utf8)
+		# Brazilian Version
+		LANGUAGE="pt_BR:pt"
+		COUNTRY="br"
+		LANG="pt_BR.UTF-8"
+		KEYTABLE="br-abnt2"
+		XKEYBOARD="abnt2"
+		KDEKEYBOARD="br"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,br"
+		TZ="America/Sao_Paulo"
+		;;
+	ch)
+		# Swiss version (basically de with some modifications)
+		LANGUAGE="de"
+		COUNTRY="ch"
+		LANG="de_CH"
+		KEYTABLE="sg-latin1"
+		XKEYBOARD="de_CH"
+		KDEKEYBOARD="de_CH"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Zurich"
+		;;
+	ch-utf8)
+		# Swiss version (basically de with some modifications)
+		LANGUAGE="de_CH:de"
+		COUNTRY="ch"
+		LANG="de_CH.UTF-8"
+		KEYTABLE="sg-latin1"
+		XKEYBOARD="de_CH"
+		KDEKEYBOARD="de_CH"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Zurich"
+		;;
+	cn)
+		# Simplified Chinese version
+		COUNTRY="cn"
+		LANG="zh_CN.GB2312"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="gb2312.1980-0"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		XMODIFIERS="@im=Chinput"
+		TZ="Asia/Shanghai"
+		;;
+	cn-utf8)
+		# Simplified Chinese version
+		COUNTRY="zh_CN:cn"
+		LANG="zh_CN.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		XMODIFIERS="@im=Chinput"
+		TZ="Asia/Shanghai"
+		;;
+	cs|cz)
+		# Czech version
+		LANGUAGE="cs"
+		COUNTRY="cs"
+		LANG="cs_CZ"
+		KEYTABLE="cz-lat2"
+		XKEYBOARD="cs"
+		KDEKEYBOARD="cs"
+		CHARSET="iso8859-2"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Prague"
+		CONSOLEFONT="iso02g"
+		;;
+	cs-utf8|cz-utf8)
+		# Czech version
+		LANGUAGE="cs_CZ:cs"
+		COUNTRY="cs"
+		LANG="cs_CZ.UTF-8"
+		KEYTABLE="cz-lat2"
+		XKEYBOARD="cs"
+		KDEKEYBOARD="cs"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Prague"
+		CONSOLEFONT="iso02g"
+		;;
+	dk|da)
+		# Dansk version
+		COUNTRY="dk"
+		LANG="da_DK"
+		# Workaround: "dk" broken in gettext, use da:da_DK
+		LANGUAGE="da:da_DK"
+		# Keytable "dk" is correct.
+		KEYTABLE="dk"
+		XKEYBOARD="dk"
+		KDEKEYBOARD="dk"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="dk,de,us,fr"
+		TZ="Europe/Copenhagen"
+		;;
+	dk-utf8|da-utf8)
+		# Dansk version
+		COUNTRY="dk"
+		LANG="da_DK.UTF-8"
+		# Workaround: "dk" broken in gettext, use da:da_DK
+		LANGUAGE="da_DK:da"
+		# Keytable "dk" is correct.
+		KEYTABLE="dk"
+		XKEYBOARD="dk"
+		KDEKEYBOARD="dk"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="dk,de,us,fr"
+		TZ="Europe/Copenhagen"
+		;;
+	el)
+		# Greek version
+		LANGUAGE="el"
+		COUNTRY="gr"
+		LANG="el_GR"
+		KEYTABLE="gr"
+		XKEYBOARD="us,el"
+		KDEKEYBOARD="us"
+		CHARSET="iso8859-7"
+		CONSOLEFONT="iso07.f16"
+		IOCHARSET="8859-7"
+		IOCODEPAGE="737"
+		SYSFONTACM="iso07"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="el"
+		TZ="Europe/Athens"
+		;;
+	el-utf8)
+		# Greek version
+		LANGUAGE="el_GR:el"
+		COUNTRY="gr"
+		LANG="el_GR.UTF-8"
+		KEYTABLE="gr"
+		XKEYBOARD="us,el"
+		KDEKEYBOARD="us"
+		CHARSET="utf8"
+		CONSOLEFONT="iso07.f16"
+		IOCHARSET="8859-7"
+		IOCODEPAGE="737"
+		SYSFONTACM="iso07"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="el"
+		TZ="Europe/Athens"
+		;;
+	es)
+		# Spanish version
+		COUNTRY="es"
+		LANG="es_ES@euro"
+		KEYTABLE="es"
+		XKEYBOARD="es"
+		KDEKEYBOARD="es"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Madrid"
+		;;
+	es-utf8)
+		# Spanish version
+		LANGUAGE="es_ES:es"
+		COUNTRY="es"
+		LANG="es_ES.UTF-8"
+		KEYTABLE="es"
+		XKEYBOARD="es"
+		KDEKEYBOARD="es"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Madrid"
+		CONSOLEFONT="lat10-16"
+		;;
+	fi)
+		# Finnish version, though we may not have the kde-i18n files
+		COUNTRY="fi"
+		LANG="fi_FI@euro"
+		KEYTABLE="fi-latin1"
+		XKEYBOARD="fi"
+		KDEKEYBOARD="fi"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		TZ="Europe/Helsinki"
+		;;
+	fi-utf8)
+		# Finnish version, though we may not have the kde-i18n files
+		LANGUAGE="fi_FI:fi"
+		COUNTRY="fi"
+		LANG="fi_FI.UTF-8"
+		KEYTABLE="fi-latin1"
+		XKEYBOARD="fi"
+		KDEKEYBOARD="fi"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		TZ="Europe/Helsinki"
+		;;
+	fr)
+		# French version
+		COUNTRY="fr"
+		LANG="fr_FR@euro"
+		KEYTABLE="fr"
+		XKEYBOARD="fr"
+		KDEKEYBOARD="fr"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us"
+		TZ="Europe/Paris"
+		;;
+	fr-utf8)
+		# French version
+		LANGUAGE="fr_FR"
+		COUNTRY="fr"
+		LANG="fr_FR.UTF-8"
+		KEYTABLE="fr"
+		XKEYBOARD="fr"
+		KDEKEYBOARD="fr"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us"
+		TZ="Europe/Paris"
+		;;
+	he|il)
+		# Hebrew version
+		LANGUAGE="he"
+		COUNTRY="il"
+		LANG="he_IL"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="il"
+		CHARSET="iso8859-8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr,de"
+		TZ="Asia/Jerusalem"
+		;;
+	he-utf8|il-utf8)
+		# Hebrew version
+		LANGUAGE="he_IL:he"
+		COUNTRY="il"
+		LANG="he_IL.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="il"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,fr,de"
+		TZ="Asia/Jerusalem"
+		;;
+	ie)
+		# Irish (English) version
+		COUNTRY="ie"
+		LANG="en_IE@euro"
+		KEYTABLE="uk"
+		XKEYBOARD="uk"
+		KDEKEYBOARD="ie"
+		CHARSET="iso8859-15"
+		#Additional KDE Keyboards
+		KDEKEYBOARDS="gb,us,de,es,fr,it"
+		TZ="Europe/Dublin"
+		;;
+	ie-utf8)
+		# Irish (English) version
+		LANGUAGE="en_IE:en"
+		COUNTRY="ie"
+		LANG="en_IE.UTF-8"
+		KEYTABLE="uk"
+		XKEYBOARD="uk"
+		KDEKEYBOARD="ie"
+		CHARSET="utf8"
+		#Additional KDE Keyboards
+		KDEKEYBOARDS="gb,us,de,es,fr,it"
+		TZ="Europe/Dublin"
+		;;
+	it)
+		# Italian version
+		COUNTRY="it"
+		LANG="it_IT@euro"
+		KEYTABLE="it"
+		XKEYBOARD="it"
+		KDEKEYBOARD="it"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="fr,us,de"
+		TZ="Europe/Rome"
+		;;
+	it-utf8)
+		# Italian version
+		LANGUAGE="it_IT"
+		COUNTRY="it"
+		LANG="it_IT.UTF-8"
+		KEYTABLE="it"
+		XKEYBOARD="it"
+		KDEKEYBOARD="it"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="fr,us,de"
+		TZ="Europe/Rome"
+		;;
+	ja)
+		# (limited) Japanese version
+		COUNTRY="jp"
+		LANG="ja_JP"
+		LANGUAGE="ja"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="fr,us,de"
+		TZ="Asia/Tokyo"
+		;;
+	ja-utf8)
+		# (limited) Japanese version
+		LANGUAGE="ja_JP:ja"
+		COUNTRY="jp"
+		LANG="ja_JP.UTF-8"
+		LANGUAGE="ja"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="fr,us,de"
+		TZ="Asia/Tokyo"
+		;;
+	nl)
+		# Dutch version
+		COUNTRY="nl"
+		LANG="nl_NL@euro"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="en_US"
+		CHARSET="iso8859-15"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="nl,de,fr"
+		TZ="Europe/Amsterdam"
+		;;
+	nl-utf8)
+		# Dutch version
+		LANGUAGE="nl_NL:nl"
+		COUNTRY="nl"
+		LANG="nl_NL.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="en_US"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="nl,de,fr"
+		TZ="Europe/Amsterdam"
+		;;
+	pl)
+		# Polish version
+		COUNTRY="pl"
+		LANG="pl_PL"
+		KEYTABLE="pl"
+		XKEYBOARD="pl"
+		KDEKEYBOARD="pl"
+		CHARSET="iso8859-2"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Warsaw"
+		CONSOLEFONT="iso02g"
+		;;
+	pl-utf8)
+		# Polish version
+		LANGUAGE="pl_PL:pl"
+		COUNTRY="pl"
+		LANG="pl_PL.UTF-8"
+		KEYTABLE="pl"
+		XKEYBOARD="pl"
+		KDEKEYBOARD="pl"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Warsaw"
+		CONSOLEFONT="iso02g"
+		;;
+	pt)
+		# Portuguese version
+		COUNTRY="pt"
+		LANG="pt_PT@euro"
+		KEYTABLE="pt-latin1"
+		XKEYBOARD="pt"
+		KDEKEYBOARD="pt"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Lisbon"
+		CONSOLEFONT="lat10-16"
+		;;
+	pt-utf8)
+		# Portuguese version
+		LANGUAGE="pt_PT:pt"
+		COUNTRY="pt"
+		LANG="pt_PT.UTF-8"
+		KEYTABLE="pt-latin1"
+		XKEYBOARD="pt"
+		KDEKEYBOARD="pt"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Lisbon"
+		CONSOLEFONT="lat10-16"
+		;;
+	ru)
+		# Russian version
+		COUNTRY="ru"
+		LANG="ru_RU.KOI8-R"
+		KEYTABLE="ru"
+		XKEYBOARD="ru"
+		KDEKEYBOARD="ru"
+		CHARSET="koi8-r"
+		CONSOLEFONT="Cyr_a8x16"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Moscow"
+		;;
+	ru-utf8)
+		# Russian version
+		LANGUAGE="ru_RU:ru"
+		COUNTRY="ru"
+		LANG="ru_RU.UTF-8"
+		KEYTABLE="ru"
+		XKEYBOARD="ru"
+		KDEKEYBOARD="ru"
+		CHARSET="utf8"
+		CONSOLEFONT="Cyr_a8x16"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,us,fr"
+		TZ="Europe/Moscow"
+		;;
+	sk)
+		# Slovak version (guessed)
+		COUNTRY="sk"
+		LANG="sk"
+		KEYTABLE="sk-qwerty"
+		XKEYBOARD="sk"
+		KDEKEYBOARD="sk"
+		CHARSET="iso8859-2"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de"
+		TZ="Europe/Bratislava"
+		CONSOLEFONT="iso02g"
+		;;
+	sk-utf8)
+		# Slovak version (guessed)
+		LANGUAGE="sk_SK:sk"
+		COUNTRY="sk"
+		LANG="sk_SK.UTF-8"
+		KEYTABLE="sk-qwerty"
+		XKEYBOARD="sk"
+		KDEKEYBOARD="sk"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de"
+		TZ="Europe/Bratislava"
+		CONSOLEFONT="iso02g"
+		;;
+	sl)
+		# Slovenian keyboard
+		LANGUAGE="sl"
+		COUNTRY="si"
+		LANG="sl_SI"
+		KEYTABLE="slovene"
+		XKEYBOARD="sl"
+		KDEKEYBOARD="si"
+		CHARSET="iso8859-2"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de"
+		TZ="Europe/Ljubljana"
+		CONSOLEFONT="iso02g"
+		;;
+	sl-utf8)
+		# Slovenian keyboard
+		LANGUAGE="sl_SI:sl"
+		COUNTRY="si"
+		LANG="sl_SI.UTF-8"
+		KEYTABLE="slovene"
+		XKEYBOARD="sl"
+		KDEKEYBOARD="si"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de"
+		TZ="Europe/Ljubljana"
+		CONSOLEFONT="iso02g"
+		;;
+	tr)
+		# Turkish version (guessed)
+		COUNTRY="tr"
+		LANG="tr_TR"
+		KEYTABLE="tr_q-latin5"
+		XKEYBOARD="tr"
+		KDEKEYBOARD="tr"
+		CHARSET="iso8859-9"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Istanbul"
+		;;
+	tr-utf8)
+		# Turkish version (guessed)
+		LANGUAGE="tr_TR"
+		COUNTRY="tr"
+		LANG="tr_TR.UTF-8"
+		KEYTABLE="tr_q-latin5"
+		XKEYBOARD="tr"
+		KDEKEYBOARD="tr"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us,de,fr"
+		TZ="Europe/Istanbul"
+		;;
+	tw)
+		# Traditional Chinese version (thanks to Chung-Yen Chang)
+		COUNTRY="tw"
+		LANG="zh_TW.Big5"
+		LANGUAGE="zh_TW.Big5"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		# CHARSET="big5-0"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		XMODIFIERS="@im=xcin"
+		TZ="Asia/Taipei"
+		;;
+	tw-utf8)
+		# Traditional Chinese version (thanks to Chung-Yen Chang)
+		LANGUAGE="zh_TW:zh"
+		COUNTRY="tw"
+		LANG="zh_TW.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		# CHARSET="big5-0"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		XMODIFIERS="@im=xcin"
+		TZ="Asia/Taipei"
+		;;
+	uk)
+		# British version
+		COUNTRY="uk"
+		LANG="en_GB"
+		LANGUAGE="en"
+		KEYTABLE="uk"
+		XKEYBOARD="uk"
+		KDEKEYBOARD="gb"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		TZ="Europe/London"
+		;;
+	uk-utf8)
+		# British version UTF-8
+		LANGUAGE="en_GB:en"
+		COUNTRY="uk"
+		LANG="en_GB.UTF-8"
+		KEYTABLE="uk"
+		XKEYBOARD="uk"
+		KDEKEYBOARD="gb"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="us"
+		TZ="Europe/London"
+		;;
+	us-utf8)
+		# American version UTF-8
+		LANGUAGE="en_US:en"
+		COUNTRY="us"
+		LANG="en_US.UTF-8"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="utf8"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,fr"
+		TZ="America/New_York"
+		;;
+	*)
+		# American version
+		LANGUAGE="us"
+		COUNTRY="us"
+		LANG="C"
+		KEYTABLE="us"
+		XKEYBOARD="us"
+		KDEKEYBOARD="us"
+		CHARSET="iso8859-1"
+		# Additional KDE Keyboards
+		KDEKEYBOARDS="de,fr"
+		TZ="America/New_York"
+		;;
+esac
+
+# Export it now, so error messages get translated, too
+export LANG COUNTRY CHARSET
+
+# Allow keyboard override by boot commandline
+KKEYBOARD="$(getbootparam keyboard 2>/dev/null)"
+[ -n "$KKEYBOARD" ] && KEYTABLE="$KKEYBOARD"
+KXKEYBOARD="$(getbootparam xkeyboard 2>/dev/null)"
+if [ -n "$KXKEYBOARD" ]; then
+	XKEYBOARD="$KXKEYBOARD"
+	KDEKEYBOARD="$KXKEYBOARD"
+elif [ -n "$KKEYBOARD" ]; then
+	XKEYBOARD="$KKEYBOARD"
+	KDEKEYBOARD="$KKEYBOARD"
+fi
+
+# Also read desired desktop, if any
+DESKTOP="$(getbootparam desktop 2>/dev/null)"
+# Allow only supported windowmanagers
+case "$DESKTOP" in gnome|enlightenment|kde|larswm|xfce|xfce4|windowmaker|wmaker|icewm|fluxbox|twm|nx|rdp|kiosk) ;; *) DESKTOP="kde"; ;; esac
+
+# Set hostname
+hostname Yoper
+
+# Set clock (Local time is more often used than GMT, so it is default)
+UTC=""
+checkbootparam utc &>/dev/null && UTC="-u"
+checkbootparam gmt &>/dev/null && UTC="-u"
+
+# hwclock uses the TZ variable
+export TZ
+hwclock $UTC -s
+
+KERNEL="$(uname -r)"
+echo " ${GREEN}Running Linux Kernel ${YELLOW}$KERNEL${GREEN}.${NORMAL}"
+
+# / must be read-write in any case, starting from here
+mount -o remount,rw / 2>/dev/null
+
+KTZ="$(getbootparam tz 2>/dev/null)"
+[ -f "/usr/share/zoneinfo/$KTZ" ] && TZ="$KTZ"
+rm -f /etc/localtime
+cp "/usr/share/zoneinfo/$TZ" /etc/localtime
+
+# Delete obsolete links and files before starting autoconfig
+if ! checkbootparam "nohwsetup"; then
+	rm -f	/dev/cdrom* /dev/cdwriter* /dev/dvdwriter* /dev/mouse* /dev/modem* /dev/scanner* \
+		/etc/sysconfig/i18n /etc/sysconfig/keyboard /etc/sysconfig/knoppix \
+		2>/dev/null
+fi
+
+# override dpi setting
+CUSTOM_DPI="$(getbootparam dpi 2>/dev/null)"
+
+# Write KNOPPIX config files for other scripts to parse
+# Standard variables/files
+echo "LANG=\"$LANG\""                  > /etc/sysconfig/i18n
+echo "COUNTRY=\"$COUNTRY\""           >> /etc/sysconfig/i18n
+echo "LANGUAGE=\"$LANGUAGE\""         >> /etc/sysconfig/i18n
+echo "CHARSET=\"$CHARSET\""           >> /etc/sysconfig/i18n
+echo "XMODIFIERS=\"$XMODIFIERS\""     >> /etc/sysconfig/i18n
+#echo "TZ=\"$TZ\""                     >> /etc/sysconfig/i18n
+
+# Default Keyboard layout for console and X
+echo "KEYTABLE=\"$KEYTABLE\""          > /etc/sysconfig/keyboard
+echo "XKEYBOARD=\"$XKEYBOARD\""       >> /etc/sysconfig/keyboard
+echo "KDEKEYBOARD=\"$KDEKEYBOARD\""   >> /etc/sysconfig/keyboard
+echo "KDEKEYBOARDS=\"$KDEKEYBOARDS\"" >> /etc/sysconfig/keyboard
+
+# Desired desktop
+echo "DESKTOP=\"$DESKTOP\""            > /etc/sysconfig/desktop
+
+# Write all, including non-standard variables, to /etc/sysconfig/knoppix
+echo "LANG=\"$LANG\""                  > /etc/sysconfig/knoppix
+echo "COUNTRY=\"$COUNTRY\""           >> /etc/sysconfig/knoppix
+echo "LANGUAGE=\"$LANGUAGE\""         >> /etc/sysconfig/knoppix
+echo "CHARSET=\"$CHARSET\""           >> /etc/sysconfig/knoppix
+echo "KEYTABLE=\"$KEYTABLE\""         >> /etc/sysconfig/knoppix
+echo "XKEYBOARD=\"$XKEYBOARD\""       >> /etc/sysconfig/knoppix
+echo "KDEKEYBOARD=\"$KDEKEYBOARD\""   >> /etc/sysconfig/knoppix
+echo "KDEKEYBOARDS=\"$KDEKEYBOARDS\"" >> /etc/sysconfig/knoppix
+echo "DESKTOP=\"$DESKTOP\""           >> /etc/sysconfig/knoppix
+echo "TZ=\"$TZ\""                     >> /etc/sysconfig/knoppix
+
+# Write DPI setting if specified
+[ "$CUSTOM_DPI" ] && echo "CUSTOM_DPI=\"$CUSTOM_DPI\""  >> /etc/sysconfig/knoppix
+
+# disable 855resolution hack
+checkbootparam "no855res" && echo "NO855RES=\"yes\"" >> /etc/sysconfig/knoppix
+
+# No kernel messages while probing modules
+echo "0" > /proc/sys/kernel/printk
+
+# Check for IDE-SCSI capable CD-Rom(s) first
+checkbootparam "idecd" || checkbootparam "atapicd" || modprobe ide-scsi &>/dev/null
+modprobe ide-cd &>/dev/null
+
+# Bring up loopback interface now
+ifconfig lo 127.0.0.1 up
+
+# CD Checker
+if checkbootparam "testcd"; then
+	echo " ${BLUE}Checking CD data integrity as requested by '${CYAN}testcd${BLUE}' boot option.${NORMAL}"
+	echo " ${BLUE}Reading files and checking against KNOPPIX/md5sums, this may take a while...${NORMAL}"
+	echo -n "${RED}"
+	( cd /cdrom/ ; rm -f /tmp/md5sum.log ; LANG="$LANG" md5sum -c KNOPPIX/md5sums 2>&1 | tee /tmp/md5sum.log )
+	if [ "$?" = "0" ]; then
+		echo " ${GREEN}Everything looks OK${NORMAL}"
+	else
+		echo "${RED} *** CHECKSUM FAILED FOR THESE FILES:                          ***"
+		egrep -v '(^md5sum:|OK$)' /tmp/md5sum.log
+		echo "${RED} *** DATA ON YOUR CD MEDIUM IS POSSIBLY INCOMPLETE OR DAMAGED, ***${NORMAL}"
+		echo "${RED} *** OR YOUR COMPUTER HAS BAD RAM.                             ***${NORMAL}"
+		echo -n "${CYAN}Hit return to contine, or press the reset button to quit.${NORMAL} "
+		read a
+	fi
+fi
+
+# Print CPU info
+echo -n "${GREEN}"
+awk -F: '/^processor/{printf " Processor"$2" is "};/^model name/{printf $2};/^vendor_id/{printf vendor};/^cpu MHz/{printf " %dMHz",int($2)};/^cache size/{printf ","$2" Cache"};/^$/{print ""}' /proc/cpuinfo 2>/dev/null
+echo -n "${NORMAL}"
+
+# KANOTIX autoconfig
+
+# udev support
+
+if checkbootparam "noudev"; then
+	echo "${BLUE}Skipping udev as requested on boot commandline.${NORMAL}"
+else
+	echo " ${GREEN}Enable ${YELLOW}udev${GREEN}.${NORMAL}"
+	mkdir -p /media
+	if ! pidof udevd >&-; then
+		RUNLEVEL=S /etc/init.d/udev start &>/dev/null
+		# load capability LSM (needed for hal)
+		modprobe capability &>/dev/null
+		/etc/init.d/dbus-1 start &>/dev/null
+	fi
+fi
+
+if checkbootparam "splash"; then
+	RES=$(fbresolution 2>/dev/null)
+	[ "$RES" = "1024x768" ] && /etc/init.d/splash.sh start
+fi
+
+update_progress()
+{
+	# be sure we are non-blocking
+	(echo "$1" > /etc/sysconfig/progress) &
+}
+
+update_progress 20
+
+# Mount /dev/pts
+stringinfile "/dev/pts" /proc/mounts || mount -t devpts -o mode=0622 /dev/pts /dev/pts 2>/dev/null
+
+# check if usbcore is already loaded.
+USBCORE_TIMEOUT="$(getbootparam usbwait 2>/dev/null)"
+[ -z "$USBCORE_TIMEOUT" ] && USBCORE_TIMEOUT=5
+USBCORE_TIMEOUT=$((USBCORE_TIMEOUT))
+[ $USBCORE_TIMEOUT -lt 0 -o $USBCORE_TIMEOUT -gt 60 ] && USBCORE_TIMEOUT=5
+
+echo -n "${BLUE}Waiting for ${YELLOW}usbcore${BLUE}. ${NORMAL}"
+for x in $(seq ${USBCORE_TIMEOUT}); do
+	stringinfile "usbcore" /proc/modules && break
+	echo -n "${BLUE}$((${USBCORE_TIMEOUT}-${x})) s${NORMAL}"
+	for y in $(seq 10); do
+		stringinfile "usbcore" /proc/modules && break
+		sleep 0.1
+	done
+	for z in $(seq $((${#x}+2))); do echo -ne "\b \b"; done
+done
+stringinfile "usbcore" /proc/modules && echo "${GREEN}Done.${NORMAL}" || echo "${RED}Timeout reached.${NORMAL}"
+
+# Activate usbfs
+stringinfile "/proc/bus/usb" /proc/mounts || mount -o devmode=0666 -t usbfs /proc/bus/usb /proc/bus/usb 2>/dev/null
+
+if [ -d /proc/acpi ]; then
+	# ACPI
+	if checkbootparam "noacpi"; then
+		echo " ${BLUE}Skipping ACPI Bios detection as requested on boot commandline.${NORMAL}"
+	else
+		echo -n " ${GREEN}ACPI Bios found, activating modules:"
+		found=""
+		for a in /lib/modules/$KERNEL/kernel/drivers/acpi/*; do
+			basename="${a##*/}"
+			basename="${basename%%.*}"
+			case "$basename" in *_acpi)
+				egrep -qi "${basename%%_acpi}" /proc/acpi/dsdt 2>/dev/null || continue ;;
+			esac
+			modprobe $basename &>/dev/null && echo -n " ${YELLOW}$basename${GREEN}" && found="yes"
+		done
+		test -z "$found" && echo -n "${BLUE}(none)"
+		echo "${NORMAL}"
+		/etc/init.d/acpid start >/dev/null
+	fi
+else
+	# APM
+	if checkbootparam "noapm"; then
+		echo " ${BLUE}Skipping APM Bios detection as requested on boot commandline.${NORMAL}"
+	else
+		modprobe apm power_off=1 &>/dev/null && test -x /etc/init.d/apmd && /etc/init.d/apmd start && echo " ${GREEN}APM Bios found, power management functions enabled.${NORMAL}"
+	fi
+fi
+
+# First: PCMCIA Check/Setup
+# This needs to be done before other modules are being loaded by hwsetup
+
+if checkbootparam "nopcmcia"; then
+	echo " ${BLUE}Skipping PCMCIA detection as requested on boot commandline.${NORMAL}"
+else
+	modprobe pcmcia_core &>/dev/null
+	# Try Cardbus or normal PCMCIA socket drivers
+	modprobe yenta_socket &>/dev/null # always true, bad check
+	modprobe i82365 &>/dev/null || modprobe tcic &>/dev/null 
+	if [ "$?" = "0" ]; then
+	echo " ${GREEN}PCMCIA found, starting cardmgr.${NORMAL}"
+		modprobe ds &>/dev/null
+		cardmgr &>/dev/null && sleep 4
+	fi
+fi
+
+update_progress 40
+# Second: Search & configure supported hardware
+# Check for options relevant to hwsetup
+NOSERIAL=""
+checkbootparam noserial &>/dev/null && NOSERIAL="yes"
+[ -n "$NOSERIAL" ] && HWSETUP_NOSERIAL="-m"
+
+# load psmouse module
+modprobe psmouse &>/dev/null
+if checkbootparam "nohwsetup"; then
+	echo "${BLUE}Loading hardware profile from ${MAGENTA}/etc/modules${BLUE}.${NORMAL}"
+	/etc/init.d/modutils-knoppix start &>/dev/null
+else
+	echo -n "${WHITE}"
+	if hwsetup -p $HWSETUP_NOSERIAL >/dev/null; then
+		echo -n "${NORMAL}"
+	else
+		echo " ${RED}Please check.${NORMAL}"
+	fi
+fi
+update_progress 60
+
+# activate PC Speaker
+modprobe pcspkr &>/dev/null
+
+# Load fuse module
+modprobe fuse &>/dev/null
+
+# activate input driver for char event devices
+modprobe evdev &>/dev/null
+
+# dwl520e1 detection
+rm -f /etc/modprobe.d/dwl520e1
+if lspci -nv|grep 1260:3873 -A1|grep -q 1186:3700; then
+	/usr/sbin/dwl520e1_fw_load &>/dev/null
+	echo 'install hostap_pci /sbin/modprobe --ignore-install hostap_pci && /usr/sbin/dwl520e1_fw_load &>/dev/null' > /etc/modprobe.d/dwl520e1
+fi
+
+# Read in what hwsetup has found
+[ -f /etc/sysconfig/knoppix ] && source /etc/sysconfig/knoppix
+
+# Workaround for new mouse detection
+if [ -f /etc/sysconfig/mouse ]; then
+	source /etc/sysconfig/mouse
+	if [ "$MOUSETYPE" == "ps2" ]; then
+		ln -sf /dev/psaux /dev/mouse
+		perl -pi -e "s|/dev/input/mice|/dev/psaux|" /etc/sysconfig/mouse /etc/sysconfig/knoppix
+		source /etc/sysconfig/mouse
+		source /etc/sysconfig/knoppix
+	fi
+fi
+       
+# Mouse
+if [ -n "$MOUSE_DEVICE" ]; then
+	echo " ${GREEN}Mouse is ${YELLOW}${MOUSE_FULLNAME}${GREEN} at ${MAGENTA}${MOUSE_DEVICE}${NORMAL}"
+fi
+
+# Soundcard
+if [ -n "$SOUND_FULLNAME" -o -n "$SOUND_DRIVER" ]; then
+	SOUNDCARD="$SOUND_DRIVER"
+	echo -n " ${GREEN}Soundcard:"
+	[ -n "$SOUND_FULLNAME" ] && echo -n " ${YELLOW}$SOUND_FULLNAME${GREEN}"
+	[ -n "$SOUNDCARD" ] && echo -n " driver=${MAGENTA}$SOUNDCARD"
+	echo "${NORMAL}"
+fi
+
+# Fast ALSA detection
+
+if [[ "$SOUND_DRIVER" == snd-* ]]; then
+	echo alias snd-card-0 $SOUND_DRIVER > /etc/modprobe.d/sound
+	echo options $SOUND_DRIVER index=0 >> /etc/modprobe.d/sound
+	#set_mixers
+	aumix -m 0 -v 65 -w 65 -c 65 &>/dev/null # set pcm & master & cd to 65, micro to 0
+fi
+
+# Read default keyboard from config file.
+# There seems to be no reliable autoprobe possible.
+[ -f /etc/sysconfig/keyboard ] && source /etc/sysconfig/keyboard
+# Set default keyboard before interactive setup
+[ -n "$KEYTABLE" ] && loadkeys -q $KEYTABLE
+[ -n "$CONSOLEFONT" ] && consolechars -f $CONSOLEFONT
+
+# Check for blind option or brltty
+BLIND=""
+checkbootparam "blind" && BLIND="yes"
+BRLTTY="$(getbootparam brltty 2>/dev/null)"
+
+if [ -n "$BLIND" -o -n "$BRLTTY" ]; then
+	if [ -x /sbin/brltty ]; then
+		# Blind option detected, start brltty now.
+		CMD=brltty
+		BRLTYPE=""
+		BRLDEV=""
+		BRLTEXT=""
+		if [ -n "$BRLTTY" ]; then
+			# Extra options
+			BRLTYPE="${BRLTTY%%,*}"
+			R="${BRLTTY#*,}"
+			if [ -n "$R" -a "$R" != "$BRLTTY" ]; then
+				BRLTTY="$R"
+				BRLDEV="${BRLTTY%%,*}"
+				R="${BRLTTY#*,}"
+				if [ -n "$R" -a "$R" != "$BRLTTY" ]; then
+					BRLTTY="$R"
+					BRLTEXT="${BRLTTY%%,*}"
+					R="${BRLTTY#*,}"
+				fi
+			fi
+		fi
+		[ -n "$BRLTYPE" ] && CMD="$CMD -b $BRLTYPE"
+		[ -n "$BRLDEV" ] && CMD="$CMD -d $BRLDEV"
+		[ -n "$BRLTEXT" ] && CMD="$CMD -t $BRLTEXT"
+		echo " ${BLUE}Starting braille-display manager: ${GREEN}${CMD}${BLUE}.${NORMAL}"
+		( exec $CMD & )
+		sleep 2
+	fi
+fi
+
+if [ -n "$INTERACTIVE" ]; then
+	# Interactive configuration
+	echo "${BLUE}Entering interactive configuration second stage.${NORMAL}"
+
+	echo " ${GREEN}Your console keyboard defaults to: ${MAGENTA}${KEYTABLE}"
+	echo -n "${CYAN}Do you want to (re)configure your console keyboard?${NORMAL} [Y/n] "
+	read a
+	[ "$a" != "n" ] && /usr/sbin/kbdconfig
+	# kbdconfig already loads the keyboard if modified.
+
+	echo -n "${CYAN}Do you want to (re)configure your soundcard?${NORMAL} [Y/n] "
+	read a
+	[ "$a" != "n" ] && sndconfig && ( exec aumix -m 0 &>/dev/null & )
+
+	if [ -n "$MOUSE_FULLNAME" -o -n "$MOUSE_DEVICE" ]; then
+		echo -n " ${GREEN}Your mouse has been autodetected as: ${MAGENTA}"
+		ls -l /dev/mouse | awk '{print $9 " " $10 " " $11}'
+		echo -n "${NORMAL}"
+	fi
+
+	echo -n "${CYAN}Do you want to (re)configure your mouse?${NORMAL} [Y/n] "
+	read a
+	[ -f /etc/sysconfig/mouse ] && source /etc/sysconfig/mouse
+	[ "$a" != "n" ] && mouseconfig
+fi
+
+update_progress 80
+# KNOPPIX automatic XFree86 Setup
+if ! checkbootparam "nomkxf86config"; then
+	[ -x /usr/sbin/mkxf86config ] && /usr/sbin/mkxf86config
+fi
+
+# Read in changes
+[ -f /etc/sysconfig/knoppix ] && source /etc/sysconfig/knoppix
+
+if [ -n "$INTERACTIVE" ]; then
+	echo -n "${CYAN}Do you want to (re)configure your graphics (X11) subsystem?${NORMAL} [Y/n] "
+	read a
+	[ "$a" != "n" ] && xf86cfg -textmode -xf86config /etc/X11/XF86Config-4 >/dev/console 2>&1 </dev/console
+	echo " ${GREEN}Interactive configuration finished. Everything else should be fine for now.${NORMAL}"
+fi
+
+if [ -n "$USE_ALSA" -a -x /etc/init.d/alsa-autoconfig ]; then
+	[ -n "$SOUND_DRIVER" ] && rmmod -r "$SOUND_DRIVER" &>/dev/null
+	# Export ALSA_CARD cariable to init script
+	case "$ALSA_CARD" in auto*) ALSA_CARD="";; esac
+	ALSA_CARD="$ALSA_CARD" /etc/init.d/alsa-autoconfig
+	# Something went wrong ?
+	[ ! -r /etc/modules.conf ] && ln -sf /KNOPPIX/etc/modules.conf /etc/modules.conf
+fi
+
+# Start FC detection on vt10
+NOFC=""
+checkbootparam "nofc" && NOFC="yes"
+[ -e /etc/drdsl/modules.inc ] && NOFC="yes"
+if [ -z "$NOFC" ]; then
+	echo " ${GREEN}Starting ${YELLOW}FC${GREEN} detection on ${YELLOW}vt10${GREEN}.${NORMAL}"
+	if [ -x /usr/sbin/detect-fc ]; then
+		open -c 10 /usr/sbin/detect-fc
+	elif [ -x /usr/local/bin/detect-fc.bash ]; then
+		open -c 10 /usr/local/bin/detect-fc.bash
+	fi
+fi
+
+RUNLEVEL="$(runlevel)"
+
+# Add cdrom devices to /etc/fstab
+for c in $(ls -d /dev/cdrom* 2>/dev/null); do
+	m=${c#/dev}
+	[ "$m" == "/cdrom" ] && m="/cdrom0"
+	[ -d /media$m ] || mkdir -p /media$m 
+	stringinfile "$c" "/etc/fstab" || printf "%-15s %-15s %-7s %-15s %-7s %s\n" "$c" "/media$m" "udf,iso9660" "user,noauto" "0" "0" >> /etc/fstab
+done
+
+# Add floppy devices to /etc/fstab
+for f in $(ls -d /sys/block/fd* 2>/dev/null); do
+	[ -d /media/floppy${f#/sys/block/fd} ] || mkdir -p /media/floppy${f#/sys/block/fd} 
+	stringinfile "$f" "/etc/fstab" || printf "%-15s %-15s %-7s %-15s %-7s %s\n" "/dev${f#/sys/block}" "/media/floppy${f#/sys/block/fd}" "auto" "rw,user,noauto" "0" "0" >> /etc/fstab
+done
+
+NOSWAP=""
+checkbootparam "noswap" && NOSWAP="yes"
+
+# Collect partitions from /proc/partitions
+partitions=""
+while read major minor blocks partition relax; do
+	partition="${partition##*/}"
+	[ -z "$partition" -o ! -e "/dev/$partition" ] && continue
+	case "$partition" in
+		hd?) ;;                                               # IDE Harddisk, entire disk
+		sd?) ;;                                               # SCSI Harddisk, entire disk
+		[hs]d*) partitions="$partitions /dev/$partition";;    # IDE or SCSI disk partition
+	esac
+done <<EOT
+$(awk 'BEGIN{old="__start"}{if($0==old){exit}else{old=$0;if($4&&$4!="name"){print $0}}}' /proc/partitions)
+EOT
+
+# Disable DMA for all IDE drives now if not enabled (and if not already done by linuxrc).
+# This is already done by linuxrc now.
+# However, for a harddisk-installed version, we are doing it again here.
+if checkbootparam "nodma"; then
+	#echo " ${BLUE}Skipping DMA accelleration as requested on boot commandline.${NORMAL}"
+#else
+	for d in $(cd /proc/ide 2>/dev/null && echo hd[a-z]); do
+		if test -d /proc/ide/$d; then
+			if egrep -q 'using_dma[ \t]+1' /proc/ide/$d/settings 2>/dev/null; then
+				MODEL="$(cat /proc/ide/$d/model 2>/dev/null)"
+				test -z "$MODEL" && MODEL="[GENERIC IDE DEVICE]"
+				echo "${BLUE}Disabling DMA acceleration for: ${MAGENTA}$d 	${YELLOW}[${MODEL}]${NORMAL}"
+				echo "using_dma:0" >/proc/ide/$d/settings
+			fi
+		fi
+	done
+fi
+
+# Start creating /etc/fstab with HD partitions and USB SCSI devices now
+if checkbootparam "nofstab"; then
+	echo " ${BLUE}Skipping /etc/fstab creation as requested on boot commandline.${NORMAL}"
+else
+	echo -n "${BLUE}Scanning for Harddisk partitions and creating ${YELLOW}/etc/fstab${BLUE}... "
+	[ -d /KNOPPIX ] && rebuildfstab -r -u knoppix -g knoppix >/dev/null 2>/dev/null || rebuildfstab -r &>/dev/null
+	if [ -e /var/run/rebuildfstab.pid ]; then
+		# Another instance of rebuildfstab, probably from hotplug, is still running, so just wait.
+		sleep 8
+	fi
+	echo "${GREEN}Done.${NORMAL}"
+fi
+
+if [ -n "$partitions" ]; then
+	while read p m f relax; do
+		case "$p" in *fd0*|*proc*|*pts*|*sys*|*cdrom*|\#*) continue;; esac
+		options="users,exec"
+		fnew=""
+		case "$f" in swap)
+			if [ -n "$NOSWAP" ]; then
+				echo "${BLUE}Ignoring swap partition ${MAGENTA}$p${BLUE} as requested.${NORMAL}"
+			else
+				echo "${BLUE}Using swap partition ${MAGENTA}$p${BLUE}.${NORMAL}"
+				swapon $p 2>/dev/null
+			fi
+			continue
+			;;
+		esac
+		# Create mountdir if not already present
+		d="/media/${p##*/}" ; [ -d "$d" ] || mkdir -p "$d"
+		case "$f" in vfat|msdos)
+			if [ -z "$NOSWAP" ] && mount -o uid=knoppix,gid=knoppix,ro -t $f $p $d 2>/dev/null; then
+				if [ -f $d/knoppix.swp ]; then
+					mount -o remount,rw $d
+					if swapon $d/knoppix.swp 2>/dev/null; then
+						echo "${BLUE}Using KNOPPIX swapfile ${MAGENTA}$d/knoppix.swp${BLUE}.${NORMAL}"
+						mount -o remount,ro $d 2>/dev/null
+						fnew="$d/knoppix.swp none            swap    sw              0       0"
+						stringinfile "$fnew" "/etc/fstab" || echo "$fnew" >> /etc/fstab
+					else
+						umount $d
+					fi
+				else
+					umount $d
+				fi
+			fi
+			;;
+			esac
+		done <<EOT
+$(cat /etc/fstab)
+EOT
+fi
+update_progress 90
+
+# New: Interactively create swapfiles on DOS partitions
+# (if necessary and possible)
+FREEMEM="$(awk 'BEGIN{m=0};/MemFree|Cached|SwapFree/{m+=$2};END{print m}' /proc/meminfo)"
+
+if [ "$FREEMEM" -lt 80000 -a -x /usr/bin/kdeinit -a -x /usr/sbin/mkdosswapfile ]; then
+	case "$LANGUAGE" in
+		de)
+			LOWMEM="Ihr Rechner verfügt nur über ${FREEMEM}kB freien RAM-Speicher. Dies ist für das Arbeiten mit Linux zwar generell ausreichend, aber leider nicht genug, um größere Anwendungen wie KDE oder Office-Pakete zu starten. Sie können im nächsten Schritt versuchen, eine sog. Auslagerungsdatei auf einer DOS-Partition (sofern vorhanden) einzurichten."
+			;;
+		*)
+			LOWMEM="There are only ${FREEMEM}kB of RAM available in your computer. While this is usually sufficient for working under Linux, it is unfortunately not enough for starting bigger applications like KDE, or office suites. You can try to create a so-called swapfile on an existing DOS-Partition (if available) in the next step."
+			;;
+	esac
+		dialog --msgbox "$LOWMEM" 12 65 </dev/console >/dev/console 2>&1 
+		/usr/sbin/mkdosswapfile </dev/console >/dev/console 2>&1 
+fi
+
+# Fat-Client-Version: DHCP Broadcast for IP address
+if checkbootparam "nodhcp"; then
+	echo " ${BLUE}Skipping DHCP broadcast/network detection as requested on boot commandline.${NORMAL}"
+else
+	NETDEVICES="$(awk -F: '/eth.:|tr.:/{print $1}' /proc/net/dev 2>/dev/null)"
+	for DEVICE in $NETDEVICES; do
+		echo -n " ${GREEN}Network device ${MAGENTA}$DEVICE${GREEN} detected, DHCP broadcasting for IP.${NORMAL}"
+		trap 2 3 11
+		pump -i $DEVICE &>/dev/null &
+		trap "" 2 3 11
+		sleep 1
+		echo " ${BLUE}(Backgrounding)${NORMAL}"
+	done
+fi
+
+# Search for custom background image for KDE/GNOME/X
+for i in /cdrom/KNOPPIX/background /usr/share/wallpapers/kanotix; do
+	for j in png jpg gif; do
+		BACKGROUND="$i.$j"
+		[ -e "$BACKGROUND" ] && break 2
+	done
+done
+
+echo 'BACKGROUND="'"$BACKGROUND"'"' >> /etc/sysconfig/knoppix
+
+findfile(){
+	FOUND=""
+	# search all partitions for a file in the root directory
+	for i in /media/[sh]d[a-z] /media/[sh]d[a-z][1-9] /media/[sh]d[a-z][1-9]?*; do
+		# See if it's already mounted
+		[ -f "$i/$1" ] &&  { echo "$i/$1"; return 0; }
+		if [ -d "$i" ] && mount -r "$i" 2>/dev/null; then
+			[ -f "$i/$1" ] && FOUND="$i/$1"
+			umount -l "$i" 2>/dev/null
+			[ -n "$FOUND" ] && { echo "$FOUND"; return 0; }
+		fi
+	done
+	return 2
+}
+
+# Load aes and cryptoloop
+modprobe aes 2>/dev/null
+modprobe cryptoloop 2>/dev/null
+
+# Try to mount this filesystem read-only, without or with encryption
+trymount(){
+	# Check if already mounted
+	case "$(cat /proc/mounts)" in *\ $2\ *) return 0;; esac
+	# Apparently, mount-aes DOES autodetect AES loopback files.
+	[ -b "$1" ] && { mount -t auto -o ro "$1" "$2" 2>/dev/null; RC="$?"; }
+	# We need to mount crypto-loop files with initial rw support
+	[ -f "$1" ] && { mount -t auto -o loop,rw "$1" "$2" 2>/dev/null; RC="$?"; }
+	# Mount succeeded?
+	[ "$RC" = "0" ] && return 0
+	echo ""
+	echo "${CYAN}Filesystem not autodetected, trying to mount $1 with AES256 encryption${NORMAL}"
+	a="y"
+	while [ "$a" != "n" -a "$a" != "N" ]; do
+		# We need to mount crypto-loop files with initial rw support
+		mount -t auto -o loop,rw,encryption=AES256 "$1" "$2" && return 0
+		echo -n "${RED}Mount failed, retry? [Y/n] ${NORMAL}"
+		read a
+	done
+	return 1
+}
+
+# Unionfs
+getfiledev(){
+	filedev="$(echo $MYPARAM | grep ^/media/ | sed s/\\/media\\/\\\([^\\/]\\+\\\).*/\\/dev\\/\\\1/)"
+	[ -z "$filedev" ] && filedev="$(echo $MYPARAM | grep ^/dev/ | sed s/\\/dev\\/\\\([^\\/]\\+\\\).*/\\/dev\\/\\\1/)"
+}
+
+getfilepath(){
+	filepath="$(echo $MYPARAM | grep ^/media/ | sed s/\\/media\\/\\\([^\\/]\\+\\\)\\///)"
+	[ -z "$filepath" ] && filepath="$(echo $MYPARAM | grep ^/dev/ | sed s/\\/dev\\/\\\([^\\/]\\+\\\)\\///)"
+}
+
+for unioncheat in unionro unionrw unionfs ; do
+	if checkbootparam "$unioncheat"; then
+		[ -z "$UNIONMADE" ] && mount -t unionfs -o dirs=/KNOPPIX none /KNOPPIX && UNIONMADE="yes" >/dev/null
+		echo " ${GREEN}Enable ${YELLOW} $unioncheat ${GREEN}support.${NORMAL}"
+		UNIONMNTOPT=""
+		[ "$unioncheat" == "unionro" ] && UNIONMNTOPT="-o ro"
+		MYPARAM="$(getbootparam "$unioncheat")"
+		[ "$unioncheat" == "unionfs" ] && MYPARAM="/ramdisk/var/tmp/union/" && mkdir -p $MYPARAM
+		getfiledev
+		if [ "$filedev" ]; then
+			if grep $filedev /etc/fstab 2>&1>/dev/null && ! grep $filedev /proc/mounts 2>&1>/dev/null; then
+				mount $UNIONMNTOPT $filedev >/dev/null
+				getfilepath
+				MYPARAM="$(grep $filedev /etc/fstab | awk '{ print $2 }' -)"
+				MYPARAM="$MYPARAM/$filepath"
+			else
+				if ! grep $filedev /proc/mounts; then
+					mkdir -p /tmp/$unioncheat >/dev/null
+					mount $UNIONMNTOPT $filedev /tmp/$unioncheat >/dev/null
+					getfilepath
+					MYPARAM="/ramdisk/var/tmp/$unioncheat/$filepath"
+				else
+					getfilepath
+					MYPARAM="$(grep $filedev /proc/mounts | awk '{ print $2 }' -)"
+					grep $MYPARAM /proc/mounts | awk '{print $4 }' - | grep ro &>/dev/null && mount -o remount,rw $filedev $MYPARAM >/dev/null
+					MYPARAM="$MYPARAM/$filepath"
+				fi
+			fi
+		fi
+		if [ -f "$MYPARAM" ]; then
+			mkdir -p /tmp/$unioncheat-loop >/dev/null
+			mount -o loop $UNIONMNTOPT $MYPARAM /tmp/$unioncheat-loop >/dev/null
+			MYPARAM="/ramdisk/var/tmp/$unioncheat-loop"
+		fi
+		[ "$MYPARAM" ] && unionctl /KNOPPIX --add $MYPARAM >/dev/null && echo " ${Green}Union ${YELLOW}$MYPARAM ${GREEN}enabled.${Normal}"
+		[ -z "$UNIONTIDY" ] && unionctl /KNOPPIX --mode /KNOPPIX ro > /dev/null && UNIONTIDY="yes"
+		[ "$UNIONMNTOPT" ] && unionctl /KNOPPIX --mode $MYPARAM ro > /dev/null
+	fi
+done
+
+# Check for persistent homedir option and eventually mount /home from there,
+# or use a loopback file.
+HOMEDIR="$(getbootparam home)"
+MYHOMEDEVICE=""
+MYHOMEMOUNTPOINT=""
+MYHOMEDIR=""
+if [ -n "$HOMEDIR" ]; then
+	case "$HOMEDIR" in
+		/dev/*)
+			MYHOMEDEVICE="${HOMEDIR##/dev/}"
+			MYHOMEDEVICE="/dev/${MYHOMEDEVICE%%/*}"
+			MYHOMEMOUNTPOINT="/media/${MYHOMEDEVICE##/dev/}"
+			MYHOMEDIR="/media/${HOMEDIR##/dev/}"
+			;;
+		/media/*)
+			MYHOMEDEVICE="${HOMEDIR##/media/}"
+			MYHOMEDEVICE="/dev/${MYHOMEDEVICE%%/*}"
+			MYHOMEMOUNTPOINT="/media/${MYHOMEDEVICE##/dev/}"
+			MYHOMEDIR="$HOMEDIR"
+			;;
+		[Aa][Uu][Tt][Oo]|[Ss][Cc][Aa][Nn]|[Ff][Ii][Nn][Dd])
+			MYHOMEDIR="$(findfile knoppix.img)"
+			MYHOMEDEVICE="${MYHOMEDIR##/media/}"
+			MYHOMEDEVICE="/dev/${MYHOMEDEVICE%%/*}"
+			MYHOMEMOUNTPOINT="/media/${MYHOMEDEVICE##/dev/}"
+			;;
+		*)
+			echo "${CRE}${RED}Invalid ${CYAN}home=${RED} option '$HOMEDIR' specified (must start with /dev/ or /media/ or 'scan').${NORMAL}"
+			echo "${CRE}${RED}Option ignored.${NORMAL}"
+			;;
+	esac
+fi
+
+if [ -n "$MYHOMEDIR" ]; then
+	if trymount "$MYHOMEDEVICE" "$MYHOMEMOUNTPOINT"; then
+		[ -f "$MYHOMEMOUNTPOINT/knoppix.img" ] && MYHOMEDIR="$MYHOMEMOUNTPOINT/knoppix.img"
+		while read device mountpoint fs relax; do
+			case "$mountpoint" in
+				*$MYHOMEMOUNTPOINT*)
+					case "$fs" in 
+						*[Nn][Tt][Ff][Ss]*)
+							umount "$MYHOMEMOUNTPOINT"; echo " ${RED}ERROR: WON'T MOUNT NTFS FILESYSTEM ON $MYHOMEDEVICE READ/WRITE!"
+							break
+							;;
+						*[Ff][Aa][Tt]*)
+							# Note: This currently won't work with encrypted partitions
+							umount "$MYHOMEMOUNTPOINT"; mount -t vfat -o rw,uid=knoppix,gid=knoppix,umask=002 "$MYHOMEDEVICE" "$MYHOMEMOUNTPOINT"
+							if [ ! -f "$MYHOMEDIR" ]; then
+								echo " ${RED}WARNING: FAT32 is not a good filesystem option for /home/knoppix (missing socket/symlink support).${NORMAL}"
+								echo " ${RED}WARNING: Better use an ext2 loopback file on this device, and boot with home=$MYHOMEDEVICE/knoppix.img.${NORMAL}"
+							fi
+						;;
+					esac
+					if mount -o remount,rw "$MYHOMEMOUNTPOINT"; then
+						echo -n " ${GREEN}Mounting ${YELLOW}$MYHOMEDIR${GREEN} as ${YELLOW}/home/knoppix${GREEN}... "
+						if [ -f "$MYHOMEDIR" ]; then
+							# It's a loopback file, mount it over the /home/knoppix directory
+							trymount "$MYHOMEDIR" /home/knoppix
+							RC="$?"
+							[ "$RC" = "0" ] && ERROR="$(mount -o remount,rw /home/knoppix 2>&1)"
+							RC="$?"
+						else
+							# Do a --bind mount
+							ERROR="$(mount --bind "$MYHOMEDIR" /home/knoppix 2>&1)"
+							RC="$?"
+						fi
+						[ "$RC" = "0" ] && echo "${GREEN}/home/knoppix mounted OK.${NORMAL}" || { echo "${RED}FAILED."; echo "$ERROR${NORMAL}"; }
+					fi
+					break
+					;;
+			esac
+		done <<EOT
+$(cat /proc/mounts)
+EOT
+		fi
+	fi
+
+	# Check for configuration floppy add-on if not running from HD
+	if [ -n "$MYCONF" ]; then
+		FOUND_CONFIG=""
+		if [ -n "$MYCONFDIR" ]; then
+		case "$MYCONFDIR" in
+			/dev/*)
+				MYCONFDEVICE="${MYCONFDIR##/dev/}"
+				MYCONFDEVICE="/dev/${MYCONFDEVICE%%/*}"
+				MYCONFMOUNTPOINT="/media/${MYCONFDEVICE##/dev/}"
+				MYCONFDIR="/media/${MYCONFDIR##/dev/}"
+				;;
+			/media/*)
+				MYCONFDEVICE="${MYCONFDIR##/media/}"
+				MYCONFDEVICE="/dev/${MYCONFDEVICE%%/*}"
+				MYCONFMOUNTPOINT="/media/${MYCONFDEVICE##/dev/}"
+				;;
+			[Aa][Uu][Tt][Oo]|[Ss][Cc][Aa][Nn]|[Ff][Ii][Nn][Dd])
+				MYCONFDIR="$(findfile knoppix.sh)"
+				if [ -n "$MYCONFDIR" ]; then
+					MYCONFDEVICE="${MYCONFDIR##/media/}"
+					MYCONFDEVICE="/dev/${MYCONFDEVICE%%/*}"
+					MYCONFMOUNTPOINT="/media/${MYCONFDEVICE##/dev/}"
+					MYCONFDIR="${MYCONFMOUNTPOINT}"
+				else
+					FOUND_CONFIG="none"
+				fi
+				;;
+			*)
+				echo "${CRE}${RED}Invalid configdir '$MYCONFDIR' specified (must start with /dev/ or /media/ or 'scan').${NORMAL}"
+				echo "${CRE}${RED}Option ignored.${NORMAL}"
+				FOUND_CONFIG="invalid"
+				;;
+		esac
+	else
+		MYCONFDEVICE="/dev/fd0"
+		MYCONFMOUNTPOINT="/media/floppy0"
+		MYCONFDIR="/media/floppy0"
+	fi
+
+	if [ -z "$FOUND_CONFIG" ]; then
+		echo -n "${CRE}${BLUE}Checking ${MAGENTA}${MYCONFDIR}${BLUE} for KNOPPIX configuration files...${NORMAL}"
+		if trymount "$MYCONFDEVICE" "$MYCONFMOUNTPOINT"; then
+			MYCONFIG="$(ls -1d $MYCONFDIR/[Kk][Nn][Oo][Pp][Pp][Ii][Xx].[Ss][Hh] 2>/dev/null)"
+			if [ -n "$MYCONFIG" -a -f "$MYCONFIG" ]; then
+				echo ""
+				FOUND_CONFIG="yes"
+				echo " ${GREEN}Found, now executing ${MAGENTA}$MYCONFIG${GREEN}.${NORMAL}"
+				echo "6" > /proc/sys/kernel/printk
+				source "$MYCONFIG" "$MYCONFDIR" || true
+				echo "0" > /proc/sys/kernel/printk
+			fi
+			umount "$MYCONFMOUNTPOINT" 2>/dev/null
+		fi
+	fi
+	[ -n "$FOUND_CONFIG" ] || echo " ${BLUE}Not present.${NORMAL}"
+fi
+
+# Check for extra shellscript on CD-Rom (/cdrom/KNOPPIX/knoppix.sh)
+MYCONFIG="$(ls -1d /cdrom/KNOPPIX/[Kk][Nn][Oo][Pp][Pp][Ii][Xx].[Ss][Hh] 2>/dev/null)"
+if [ -n "$MYCONFIG" -a -f "$MYCONFIG" ]; then
+	echo ""
+	FOUND_CONFIG="yes"
+	echo " ${GREEN}KNOPPIX Configuration file found on CD, executing ${MAGENTA}$MYCONFIG${GREEN}.${NORMAL}"
+	echo "6" > /proc/sys/kernel/printk
+	source "$MYCONFIG" /cdrom/KNOPPIX || true
+	echo "0" > /proc/sys/kernel/printk
+fi
+
+# modem detection
+if ! checkbootparam "nomodem"; then
+	if lspci|grep Intel|grep -q "AC'97 Modem Controller"; then
+		/etc/init.d/sl-modem-daemon start &>/dev/null
+		grep -q ^sl-modem-daemon /etc/sysconfig/services &>/dev/null || echo sl-modem-daemon >> /etc/sysconfig/services
+	fi
+fi
+
+# powernow detection
+if ! checkbootparam "nopowernow"; then
+	POWERNOW=""
+	grep -iq "Mobile AMD Athlon(tm) XP" /proc/cpuinfo && POWERNOW="powernow-k7"
+	grep -iq "AMD Athlon(tm) 64 Processor" /proc/cpuinfo && POWERNOW="powernow-k8"
+	grep -iq "AMD Sempron(tm) Processor" /proc/cpuinfo && POWERNOW="powernow-k8"
+	grep -iq "AMD Turion(tm) 64" /proc/cpuinfo && POWERNOW="powernow-k8"
+	grep -iq "Intel(R) Pentium(R) M processor" /proc/cpuinfo && POWERNOW="speedstep-centrino"
+	#grep -iq "Intel(R) Celeron(R) M processor" /proc/cpuinfo && POWERNOW="speedstep-centrino"
+	grep -iq "Mobile Intel(R) Pentium(R) 4" /proc/cpuinfo && POWERNOW="speedstep-ich"
+	if [ "$POWERNOW" ]; then
+		echo " ${GREEN}Enable ${YELLOW}Powernow${GREEN}.${NORMAL}"
+		modprobe $POWERNOW &>/dev/null
+		/etc/init.d/powernowd start &>/dev/null
+		grep -q ^powernowd /etc/sysconfig/services &>/dev/null || echo powernowd >>/etc/sysconfig/services
+	fi
+else
+	echo "${BLUE}Skipping Powernow detection as requested on boot commandline.${NORMAL}"
+fi
+
+# MS MM keyboard add-on
+# fix
+setkeycodes e001 126 &>/dev/null
+setkeycodes e059 127 &>/dev/null
+# fn keys
+setkeycodes e03b 59 &>/dev/null
+setkeycodes e008 60 &>/dev/null
+setkeycodes e007 61 &>/dev/null
+setkeycodes e03e 62 &>/dev/null
+setkeycodes e03f 63 &>/dev/null
+setkeycodes e040 64 &>/dev/null
+setkeycodes e041 65 &>/dev/null
+setkeycodes e042 66 &>/dev/null
+setkeycodes e043 67 &>/dev/null
+setkeycodes e023 68 &>/dev/null
+setkeycodes e057 87 &>/dev/null
+setkeycodes e058 88 &>/dev/null
+
+# hp keycodes
+setkeycodes e00a 89 e008 90 &>/dev/null
+
+# captive live fix
+if [ -L /var/lib/captive/ext2fsd.sys ]; then
+	rm -f /var/lib/captive/ext2fsd.sys
+	cp /KNOPPIX/var/lib/captive/ext2fsd.sys /var/lib/captive
+fi
+
+update_progress 100
+
+if checkbootparam "splash"; then
+	sleep 1
+	/etc/init.d/splash.sh stop
+	sleep 1
+fi
+
+# delete named pipe
+rm -f /etc/sysconfig/progress
+
+echo "6" > /proc/sys/kernel/printk
+
+# Re-enable signals
+trap 2 3 11
+
+exit 0
+;;
+	stop) ;;
+	restart|force-reload) ;;
+esac

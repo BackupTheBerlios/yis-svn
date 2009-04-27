@@ -1,0 +1,54 @@
+#! /bin/sh
+#
+# Name:		Simple rc 
+#
+# Author:	Miquel van Smoorenburg <miquels@cistron.nl>
+#		Bruce Perens <Bruce@Pixar.com>
+#
+# Version:	@(#)rc  2.78  07-Nov-1999  miquels@cistron.nl
+#
+# Modified version for yoper modular installer by Tobias Gerschner
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+umask 022
+
+# Ignore CTRL-C only in this shell, so we can interrupt subprocesses.
+trap ":" INT QUIT TSTP
+# Set onlcr to avoid staircase effect.
+stty onlcr 0>&1
+
+#make sure /var is writable
+#we should fix that in linuxrc tough
+
+#rm -rf /var/*
+#cp -a /KNOPPIX/var/* /var
+
+/etc/rc.d/rc.sysinit 
+
+#call additional scripts we wanted to have
+
+for s in `ls /etc/yis/rc.d/rcS.d/S* 2>/dev/null`
+do
+	$s start
+done
+
+if [ -x /usr/bin/rhgb-client ] ; then
+	    /usr/bin/rhgb-client --quit >/dev/null 2>&1
+fi
+
+chvt 1
+
+#load all kbd modules to make sure we can use the keyboard, probably required on a regular system as well ?
+
+for kbd in usbkbd ir-kbd-i2c parkbd xtkbd sunkbd newtonkbd lkkbd ; do
+	modprobe $kbd >/dev/null 2>&1 &
+done
+
+#load the BusLogic Driver for vmware installations
+modprobe BusLogic >/dev/null 2>&1 &
+
+#avoid errors of not started services on shutdown
+rm -f /etc/rc.d/rc5.d/*
+
+/usr/sbin/yoperinstall

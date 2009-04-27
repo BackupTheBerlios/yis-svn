@@ -1,0 +1,55 @@
+default 0
+timeout 10
+splashimage=(ROOTHD,ROOTPART)/boot/grub/ysplash.xpm.gz 
+hiddenmenu
+
+#
+# If you want your bootloader configuration to be updated automatically on kernel upgrade
+# do not touch the line 'autoconfig start' and 'autoconfig stop'!
+#
+# The automatic updater will only write the default kernel and the failsafe mode boot option.
+#
+# The only options you can preserve in that section are on the kernel commandline .
+# Please use the phrase 'custom' to keep the kernel commandline as is.
+#
+
+# e.g.:
+#
+# default kernel line:
+# kernel /boot/vmlinuz-2.6.20_yos-1 ro root=/dev/hda4 quiet nofscheck
+# custom config
+# kernel /boot/vmlinuz-2.6.20_yos-1 ro root=/dev/hda4 quiet nofscheck custom resume2=swap:/dev/xyz
+#
+# anything after custom get's preserved ( resume2=swap:/dev/xyz )
+#
+#
+# Also anything before and after the autoconfig section will be copied as is,
+# please do not use autoconfig start and stop on your own
+#
+
+#
+####################
+# autoconfig start #
+####################
+#
+
+title Yoper Linux - KVERSION
+        root (ROOTHD,ROOTPART)
+        kernel /boot/vmlinuz-KVERSION ro root=ROOT_DEV rhgb quiet nofscheck
+        initrd /boot/initrd.img-KVERSION 
+
+title Yoper Linux - KVERSION - Failsafe
+        root (ROOTHD,ROOTPART)
+        kernel /boot/vmlinuz-KVERSION ro root=ROOT_DEV ramdisk=16384 noacpi noapm showopts ide=nodma nofscheck failsafe
+        initrd /boot/initrd.img-KVERSION 
+
+#
+###################
+# autoconfig stop #
+###################
+#
+
+#
+# Add your additional configuration below
+#
+

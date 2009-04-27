@@ -1,0 +1,6 @@
+#!/bin/sh
+
+[ -f /etc/yis/settings ] && . /etc/yis/settings
+
+rpm -q flash-plugin >/dev/null 2>&1 || $TOP_DIR/common/install-flash.sh >/dev/null 2>&1 &
+

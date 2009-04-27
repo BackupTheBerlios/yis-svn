@@ -1,0 +1,25 @@
+#!/bin/sh
+
+source /etc/yis/settings
+
+$TOP_DIR/common/add-network-interfaces.sh
+
+function try_again() {
+
+modprobe ipv6
+
+for p in `/sbin/pidof /sbin/dhclient`
+do
+  kill -15 $p >/dev/null 2>&1 || kill -9 $p >/dev/null 2>&1
+done
+
+devlist=$(awk -F ':' '$1 ~ /eth|wlan/ {print $1}' /proc/net/dev | xargs)
+
+for dev in $devlist
+do
+  dhclient $dev && break
+done
+
+}
+
+[ -z "$(netstat -nr | grep \"^0.0.0.0\")" ] && try_again

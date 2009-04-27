@@ -1,0 +1,65 @@
+export YTITLE="YOUR Operating System Installation Program"
+export DIALOG="/usr/bin/dialog --clear --shadow "
+export KVERSION="`uname -r`"
+export RELEASE=
+export VERSION=
+export YVERSION=YOS-${VERSION}-${RELEASE}
+
+
+#directories
+
+CONF_DIR=/etc/yis
+TOP_DIR=/usr/lib/yis
+TMP=/var/tmp/yis
+RETVAL=$TMP/RETVAL
+choice=$TMP/choice
+
+LIVEUSER=yoperlive
+LIVECD_INIT_DIR=$CONF_DIR/livemode.d
+
+#lock files
+
+
+#temporary result files
+ALL_PARTITIONS=$TMP/allparts
+LINUX_PARTITIONS=$TMP/linparts
+DEVICEMAP=$TMP/device.map
+
+#scripts
+
+#2b reviewed
+
+PARTITIONS=$TMP/partitionslist
+disks_choice=$TMP/disk_menu
+DEV_DISKS=$TMP/hdds
+
+PMENU=$TMP/partition_menu
+PSTORE=$TMP/partition_choice
+HDSTORE=$TMP/HD_choice
+
+# Hold already chosen partitions
+
+SKIP_THEM=$TMP/chosen
+
+FILESYSTEMS=$CONF_DIR/filesystems
+FS_MENU=$TMP/filesystems_menu
+FS_STORE=$TMP/FS_choice
+
+LANG_STORE=$TMP/lang
+
+INST_ROOT=/ramdisk/YIS/root
+BOOT_DEV=$TMP/boot_dev
+
+#ISO-SETUP
+#BASEPKGS is mandatory and defines which packages will be installed on the Yoper CD 
+
+BASEPKGS="Linux-PAM MAKEDEV Mesa-libGL ORBit2 SDL aalib acpid alsa-lib alsa-utils apt ash aspell atk audiofile bash beecrypt binutils bzip2 chkconfig ckermit color compat-libstdc.so.5 console-tools coreutils cpio cracklib curl cyrus-sasl db4 dbus dbus-glib ddcxinfo device-mapper dhcp-client dialog diffutils disktype e2fsprogs eject elfutils esound ethtool expat fam file findutils font-util fuse gawk gdbm gettext glib glib2 glibc gmp grep groff grub gzip hal hdparm hwdata hwinfo hwsetup inetutils infozip iproute iptables kbd krb5 kudzu lame less lilo linux-libc-headers lndir logrotate lua lzo man mc module-init-tools nano ncurses neon net-tools newt ntfs-3g ntfsprogs openldap openssh openssl parted patch pciutils pcre perl perl-Archive-Tar perl-HTML-Template perl-NTLM perl-Parse-RecDescent popt powernowd prelink procinfo procps progsreiserfs psmisc pth python python-xml readahead readline rebuildfstab resmgr rpm rpm-python sed shadow sharutils smartpm sqlite strace sudo sysfsutils sysvinit tar tcl tcp_wrappers tcsh texinfo udev unzip usbutils usermode utempter util-linux wget wireless-tools words xfsprogs yaird yoper-rpm-settings yoperbase yoperinitscripts yopermaintain zlib sshfs-fuse pcmcia-utils wpa_supplicant yoper-kde-settings NetworkManager fcron dhcdbd reiserfsprogs ntp-date reiser4progs mirrorwatch"
+
+#PKGCACHEDIR is voluntary and defines a location where rpm packages are cached for adding to the ISO
+#You may want to adjust /etc/yis/packages/* if you intend to build your custom ISO
+PKGCACHEDIR=
+
+#BUILDROOT is voluntary to change the place where the ISO will get built , right now some files will be still stored in /tmp
+
+#KVERSIONREL determines the exact rpm version and release of the kernel rpm, required to work with mach, voluntary tough, by default the same rpm as being installed in the running system will be choosen, trouble tough if you have multiple kernel rpms installed
+KVERSIONREL=

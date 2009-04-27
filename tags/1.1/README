@@ -1,0 +1,56 @@
+Yoper CLI Installer Config 
+==========================
+
+1) How to generate your own installation CD
+
+The script to generate an Yoper Installation CD is in /usr/lib/yis/common/make-iso.sh . It is a basic shell script so anyone with a little experience might be able to follow what will be done in detail.
+
+The following packages will be required
+
+yis-cli ( the yoper installer , it also should pull in all the other tools mentioned here
+which ( to verify the existence of the tools in the $PATH )
+curl , to download the base cd sekeleton
+wget , to download the packages
+smart , to resolve dependencies for the packages to be added
+mach , to generate the basic yoper filesystem
+dialog, to show the command line user interface ( cli )
+color, to easily use colors in scripts
+mkisofs , to generate the ISO
+mksquashfs, to generate a squashfs image for the live image
+
+The procedure is pretty straight forward :
+
+* build a base image using mach
+* read the package configuration and download all packages
+* generate a base live image via squashfs
+* copy all data into INSTALL.CD 
+* generate the FAT iso
+* remove all additional packages and generate the slim iso
+
+
+Notes:
+
+To generate a custom ISO , go into the directory where you have approx 2 GB of free space. Choose that location with care. A lot of data will be cached there and may be reused if you recreate the ISO in the same location.
+
+Create a directory in `pwd`/YIS to override anything JUST FOR THE LIVE IMAGE!
+
+Modify /etc/yis/settings to apply your custom settings. It is also possible to just delete / move this file to just get the automatic settings. You may also use YIS/etc/yis/settings.
+
+Please note. Any files in YIS/ that overwrite Yoper files will only be on the live CD. A backup of those files will be restored upon installation. To install your very own packages you have to have them as rpm's and use them in a repository. Improvements will follow here ...
+
+
+Important variables
+
+YVERSION , set the version tag of your ISO here , if empty an auto tag will be generated
+RELEASE , set the release number of your ISO here , if empty an auto value will be generated
+BUILDROOT , by default the tempary data will be stored in a random directory created via mktemp -d . Most likely that is in /tmp . If you have less than 1 GB space left in /tmp you may want to point to somewhere with sufficient space
+BASEPKGS , determines the number of packages which will be available on the live CD. Install the package yis-cli and look into /etc/yis/settings for the default list. If you want to build a live CD that is one of the major things to modify. Make sure you do not remove packages that are required for the boot procedure or configuration of your Linux installation.
+
+make-iso.sh work tree :
+
+$PWD = Directory where you execute make-iso.sh , this is $(pwd)
+
+$PWD/INSTALL.CD = Directory which resembles the CD Image
+$PWD/YOPER = Directory where rpms depending on the package definition gets stored
+
+$BUILDROOT = Directory for the live cd filesystem which is also the base image during installation. 

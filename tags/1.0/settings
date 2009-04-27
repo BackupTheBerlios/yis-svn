@@ -1,0 +1,32 @@
+export YTITLE="YOUR Operating System Installation Program"
+export DIALOG="/usr/bin/dialog --clear --shadow "
+export YVERSION="2.9.1_BLACKSAND"
+export KVERSION="2.6.15_yos_3"
+
+TOP_DIR=/var/yis
+TMP=/var/tmp
+choice=$TMP/choice
+
+LINUX_PARTITIONS=$TMP/linparts
+DISKS=$TMP/parts
+disks_choice=$TMP/cfdisk_menu
+DEV_DISKS=$TMP/disks
+
+PMENU=$TMP/partition_menu
+PSTORE=$TMP/partition_choice
+HDSTORE=$TMP/HD_choice
+
+# Hold already chosen partitions
+
+SKIP_THEM=$TMP/chosen
+
+FILESYSTEMS=$TOP_DIR/filesystems
+FS_MENU=$TMP/filesystems_menu
+FS_STORE=$TMP/FS_choice
+
+LANG_STORE=$TMP/lang
+
+INST_ROOT=/ramdisk/YIS/root
+BOOT_DEV=$TMP/boot_dev
+DEVICEMAP=$TMP/device.map
+

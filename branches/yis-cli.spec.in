@@ -1,0 +1,71 @@
+%define _skip_check yes
+
+Requires:	mach mkisofs mksquashs
+
+Summary:        CLI Version of the Yoper Installer
+Name:           yis-cli
+Version:        #VERSION#
+Release:        1
+Copyright:      GPL
+Group:          System/Base
+Source0:        yis-%{version}.tar.bz2
+URL:            http://www.yoper.com
+Distribution:   Yoper
+BuildRoot:      %{_tmppath}/%{name}-buildroot
+Packager:	Tobias Gerschner <tobias@lists.yoper.com>
+
+%description
+The CLI Yoper Installer is a collection of scripts to install Yoper.
+The goal is to provide a distribution independent way of installing a linux operating system.
+
+%prep
+rm -rf $RPM_BUILD_DIR/%{name}*
+rm -rf %{buildroot}
+%setup -q
+
+%install
+if [ -d "$RPM_BUILD_ROOT" ] && [ "$RPM_BUILD_ROOT" != "/" ] ; then rm -rf $RPM_BUILD_ROOT; fi
+
+make install DESTDIR=$RPM_BUILD_ROOT
+
+%clean
+rm -rf $RPM_BUILD_DIR/%{name}*
+rm -rf %{buildroot}
+
+
+%files
+%defattr(755,root,root)
+#COMMON_DIR#/chroot_setup.sh
+#COMMON_DIR#/copy-files.sh
+#COMMON_DIR#/copy-settings.sh
+#COMMON_DIR#/detect-valid-partitions.sh
+#COMMON_DIR#/discinfo.sh
+#COMMON_DIR#/firstboot.sh
+#COMMON_DIR#/checkmd5sum.sh
+#COMMON_DIR#/install-grub.sh
+#COMMON_DIR#/install-lilo.sh
+#COMMON_DIR#/lossless-repartitioning.sh
+#COMMON_DIR#/lossless-resize.sh
+#COMMON_DIR#/make-iso.sh
+#COMMON_DIR#/mkinitrd.sh
+#COMMON_DIR#/parted-info.sh
+#COMMON_DIR#/partitioning.sh
+#COMMON_DIR#/shrink-partition.sh
+#COMMON_DIR#/start-yis.sh
+
+%dir #SYSCONFDIR#/yis/packages
+#SYSCONFDIR#/yis/packages/Basic
+#SYSCONFDIR#/yis/packages/Development
+#SYSCONFDIR#/yis/packages/Kernelsource
+#SYSCONFDIR#/yis/packages/Multimedia
+#SYSCONFDIR#/yis/packages/Standard
+%dir #SYSCONFDIR#/yis/rc.d
+%dir #SYSCONFDIR#/yis/rc.d/rc5.d
+#SYSCONFDIR#/yis/rc.d/rc
+%dir #SYSCONFDIR#/yis/rcS.d
+#SYSCONFDIR#/yis/grub.conf.template
+#SYSCONFDIR#/yis/lilo.conf.template
+#SYSCONFDIR#/yis/inittab.cd
+#SYSCONFDIR#/yis/settings
+#SBINDIR#/yoperinstall
+#CLI_DIR#/cli.sh

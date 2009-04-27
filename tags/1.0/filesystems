@@ -1,0 +1,6 @@
+ext2		"Standard Linux Filesystem		" off
+ext3		"Journaling file system			" off
+reiserfs	"Journaling file system			" off
+reiser4		"Experimental journaling file system	" off	
+xfs		"Journaling file system			" on
+

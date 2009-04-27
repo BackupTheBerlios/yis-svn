@@ -1,0 +1,23 @@
+#!/bin/sh
+
+### Remove unwanted services here
+
+function remove_gui_services () {
+
+
+for service in freshclam crond haldaemon cupsd lisa pango-modules samba avahi-daemon alsa-utils fontcache xorg-cfg xdm oss fontcache gtk2 kdmctrl  ; do
+		chkconfig --del $service 2>/dev/null
+		rm -f /etc/rc[1,2,3,4,5].d/S*${service}
+done
+
+}
+
+#always removed
+
+. /etc/yis/settings
+
+case $ISOTYPE in
+  slim)
+    remove_gui_services
+    ;;
+esac

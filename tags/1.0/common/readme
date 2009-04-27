@@ -1,0 +1,7 @@
+# hint sheet, to avoid mistakes
+
+# tar cjf /yis/common/fix-init.tar.bz2 /etc/rcS.d/* /etc/inittab /etc/rc5.d/* /usr/share/autostart/*
+# new etc/inittab
+# symlinks to /yis/common into /etc/rcS.d
+# /etc/rcS.d/S00 initial fix !
+

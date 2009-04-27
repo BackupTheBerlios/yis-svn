@@ -1,0 +1,56 @@
+#!/bin/bash
+# This script is run chrooted in the new yoper installation
+
+home=`grep "\/home" /etc/fstab | awk '{print $1}'` || :
+[ -n "$home" ] && mount $home /home 2>/dev/null
+
+pwconv 
+
+user=`mktemp`
+
+dialog --backtitle "YOUR Operating System Setup Program" --title "User setup" \
+--clear --insecure --shadow --inputbox "Please enter your primary username. Only lowercase letters and numbers are allowed." 13 25 2> $user
+
+# take care that no user is blocking the default UID
+sed -i -e "/:1000:/d" /etc/passwd
+
+user=`cat $user | tr A-Z a-z | tr -cd [:alnum:]`
+
+#just in case there's already some directory
+chown -R $user.users /home/$user >/dev/null 2>&1
+/usr/sbin/useradd -u 1000 -s /bin/bash -m $user && usermod -a -G 4,11,30,31,100 $user
+echo "please choose the users password: $user "
+until (passwd $user);
+ do (clear && echo "User Password not changed, please retry");
+done;
+
+pwconv
+sleep 0.1
+
+mkdir -p /home/$user/.kde/Autostart
+
+cat > /home/$user/.kde/Autostart/welcome.sh <<"EOF"
+#!/bin/sh
+
+/usr/bin/konqueror /usr/share/yoper/release-notes/index.html &
+
+rm -f ~/Desktop/*.desktop
+rm -f $0
+
+EOF
+
+chown $user.users  /home/$user/.kde/Autostart/welcome.sh
+chmod 755 /home/$user/.kde/Autostart/welcome.sh
+
+for user in `grep "x\:1[0-9][0-9][0-9]" /etc/passwd | awk -F ':' '{print $1}'` ; do
+
+	if [ -n "$user" -a -d /home/$user ]  ; then
+
+		mkdir -p /home/$user/.kde/Autostart
+		ln -s /usr/bin/knetworkmanager /home/$user/.kde/Autostart
+		chown -R $user.users /home/$user
+		echo $user >> /etc/cron/cron.allow
+	fi
+done
+
+

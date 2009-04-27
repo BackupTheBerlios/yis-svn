@@ -1,0 +1,9 @@
+#!/bin/sh
+
+(
+/usr/sbin/soundcarddetection -v
+chkconfig --add oss
+/etc/init.d/oss start
+) &
+
+

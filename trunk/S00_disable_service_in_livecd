@@ -1,0 +1,5 @@
+#!/bin/sh
+
+#no point in auto updating channels on live cd
+rm -f /usr/share/autostart/ksmarttray-auto.desktop 
+

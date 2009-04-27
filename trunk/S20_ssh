@@ -1,0 +1,6 @@
+#!/bin/bash
+# This script is run chrooted in the new yoper installation
+
+[ ! -f /etc/ssh/ssh_host_key ] && ssh-keygen -P "" -t rsa1 -f /etc/ssh/ssh_host_key > /dev/null
+[ ! -f /etc/ssh/ssh_host_rsa_key ] && ssh-keygen -P "" -t rsa -f /etc/ssh/ssh_host_rsa_key > /dev/null
+[ ! -f /etc/ssh/ssh_host_dsa_key ] && ssh-keygen -P "" -t dsa -f /etc/ssh/ssh_host_dsa_key > /dev/null

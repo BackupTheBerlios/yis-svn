@@ -1,0 +1,97 @@
+#!/bin/sh
+#
+# Name:		Simple rc 
+#
+# Author:	Miquel van Smoorenburg <miquels@cistron.nl>
+#		Bruce Perens <Bruce@Pixar.com>
+#
+# Version:	@(#)rc  2.78  07-Nov-1999  miquels@cistron.nl
+#
+# Modified version for yoper modular installer by Tobias Gerschner
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+export PATH
+umask 022
+
+# Ignore CTRL-C only in this shell, so we can interrupt subprocesses.
+trap ":" INT QUIT TSTP
+# Set onlcr to avoid staircase effect.
+stty onlcr 0>&1
+
+rm -f /etc/resolv.conf /.firstrun
+
+/etc/rc.d/rc.sysinit 
+
+echo "127.0.0.1 $(hostname)" > /etc/hosts
+echo "127.0.0.1 localhost" > /etc/hosts
+
+#load all kbd modules to make sure we can use the keyboard, probably required on a regular system as well ?
+for kbd in usbkbd ir-kbd-i2c parkbd xtkbd sunkbd newtonkbd lkkbd ; do
+	modprobe $kbd >/dev/null 2>&1 &
+done
+
+#load the BusLogic Driver for vmware installations
+modprobe BusLogic >/dev/null 2>&1 &
+
+/etc/rc.d/init.d/functions
+/etc/init.d/localization
+
+#call additional scripts we wanted to have
+
+debug_sleep(){
+	answer="yes";read -p "Debugging sleep to allow you noticing errors, press a key to proceed" -t 60 answer; 
+}
+
+for s in /etc/yis/rc.d/rcS.d/S*
+do
+	[ -x "$s" ] && $s start
+	#debug_sleep
+done
+
+if [ -x /usr/bin/rhgb-client ] ; then
+	    /usr/bin/rhgb-client --quit >/dev/null 2>&1
+fi
+
+chvt 1
+
+source /etc/yis/settings >/dev/null 2>&1 ||:
+
+
+### Remove unwanted services here 
+
+#always removed
+
+for service in freshclam crond haldaemon cupsd lisa pango-modules samba sshd avahi-daemon alsa-utils fontcache xorg-cfg xdm oss fontcache gtk2 kdmctrl dhclient ; do
+		chkconfig --del $service 2>/dev/null
+		rm -f /etc/rc[1,2,3,4,5].d/S*${service}
+done
+
+#avoid errors of not started services on shutdown
+if [ "$ISOTYPE" != "slim" ] ; then
+	for service in fontcache gtk2 kdmctrl pango-modules samba ; do
+		chkconfig --del $service 2>/dev/null
+		rm -f /etc/rc[1,2,3,4,5].d/S*${service}
+	done
+fi
+
+#run remaining services from rcS
+for s in /etc/rc.d/rcS.d/S*
+do
+	[ -n "$s" ] && [ -x "$s" ] && $s start
+done
+
+#run remaining services from rc5
+for s in /etc/rc.d/rc5.d/S*
+do
+	[ -x "$s" ] && $s start
+done
+
+#delete any symlinks but keep real files
+
+for l in /etc/rc.d/rc[0,5,6].d/* ; do
+	[ -L $l ] && rm -f $l
+done
+
+echo 0 > /proc/sys/kernel/printk 
+
+$TOP_DIR/common/start-yis.sh

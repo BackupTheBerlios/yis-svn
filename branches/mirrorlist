@@ -1,0 +1,19 @@
+#list of known yoper mirrors
+#we're gonna check and rank the mirrors depending upon speed and how up to date they are
+#every 50 kbyte/s is + 5 point , every day behind is -10 point
+#4 weeks behind is out of date and gets a mirror removed ( in theory and once mirrorwatch is done )
+
+http://public.planetmirror.com/pub/yoper/yoper-3.0
+http://mirror.ihug.co.nz/yoper/yoper-3.0
+http://gd.tuwien.ac.at/opsys/linux/yoper/yoper-3.0
+http://download.at.kde.org/opsys/linux/yoper/yoper-3.0
+http://ftp.belnet.be/linux/yoper/yoper-3.0
+http://ftp.sh.cvut.cz/MIRRORS/yoper/yoper-3.0
+http://ftp.gwdg.de/pub/linux/yoper/yoper-3.0
+http://ftp.hosting-studio.de/pub/linux/yoper/yoper-3.0
+http://ftp.nluug.nl/pub/os/Linux/distr/yoper/yoper-3.0
+http://ftp.surfnet.nl/pub/os/Linux/distr/yoper/yoper-3.0
+ftp://ftp.roedu.net/pub/mirrors/ftp.yoper.com/yoper-3.0
+http://gulus.usherbrooke.ca/pub/distro/yoper/yoper-3.0
+ftp://us2.yoper.com/pub/linux/yoper/yoper-3.0
+

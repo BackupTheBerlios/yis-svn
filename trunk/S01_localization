@@ -1,0 +1,5 @@
+#!/bin/sh
+tzselect
+/etc/rc.d/init.d/functions
+/etc/init.d/localization
+

@@ -1,0 +1,21 @@
+Yoper Installer - YIS 
+=====================
+
+YIS is the Yoper Installer aimed at making the Installation as simple as possible. It is being developed from scratch using PyQt.
+
+YIS aims at easy to use GUI, simple and effective coding techniques, make things simpler.
+
+YIS is coded with PyQt and the GUI is designed in Qt Designer. 
+
+If you feel you can assist with the current development work of YIS, please contact chaks.yoper@gmail.com or tobias.gerschner@gmail.com
+
+Requirements
+============
+
+1) Qt >= 3.3.* but not Qt 4
+2) PyQt - cross verify whether you have the correct PyQt version for Qt version you have
+	for eg., For Qt 3.3.4 , you have to download the corresponding version of PyQt
+3) Python >= 2.4.1
+4) Qt Designer 3.3.*
+
+any queries, mailto : chaks.yoper@gmail.com

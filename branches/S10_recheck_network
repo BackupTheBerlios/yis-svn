@@ -1,0 +1,4 @@
+#!/bin/sh
+
+netstat -nr | grep "^0.0.0.0" || /etc/init.d/network start
+

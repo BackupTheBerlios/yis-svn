@@ -1,0 +1,11 @@
+#!/bin/sh
+
+### Remove unwanted services here
+
+#always removed
+
+for service in freshclam crond haldaemon cupsd lisa pango-modules samba sshd avahi-daemon alsa-utils oss
+                chkconfig --del $service 2>/dev/null
+                rm -f /etc/rc[1,2,3,4,5].d/S*${service}
+done
+

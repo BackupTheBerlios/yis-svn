@@ -1,0 +1,19 @@
+#!/bin/bash
+failure(){
+
+echo "Could not find the Yoper Installer"
+echo "Please verify the md5sum of your downloaded discimage."
+exit 1
+
+}
+
+source /etc/yis/settings || failure
+
+if [ -n "$TOP_DIR" ] && [ -x $TOP_DIR/cli/cli.sh ] ; then
+	$TOP_DIR/cli/cli.sh
+else
+	failure
+fi
+
+
+

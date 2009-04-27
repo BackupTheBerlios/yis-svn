@@ -1,0 +1,18 @@
+boot=BOOT_DEV
+prompt
+delay=10
+timeout=20
+
+image=/boot/vmlinuz-KVERSION
+	label=Yoper
+	root=ROOT_DEV
+	read-only
+	initrd=/boot/initrd.img-KVERSION
+	append="quiet splash=silent"
+
+image=/boot/vmlinuz-KVERSION
+	label=Yoper_Failsafe
+	root=ROOT_DEV
+	read-only
+	initrd=/boot/initrd.img-KVERSION
+	append="quiet apm=off dma=off acpi=off"
